@@ -1,0 +1,12 @@
+---
+- hosts: webservers
+  vars_files:
+    - vars/app_vars.yml   # Import variables
+  tasks:
+    - include_tasks: tasks/install_app.yml
+
+  handlers:
+    - name: Restart {{ app_name }}
+      service:
+        name: "{{ app_name }}"
+        state: restarted

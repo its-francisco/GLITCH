@@ -11,7 +11,7 @@ from glitch.parsers.docker import DockerParser
 from glitch.stats.print import print_stats
 from glitch.stats.stats import FileStats
 from glitch.tech import Tech
-from glitch.repr.inter import UnitBlockType
+from glitch.repr.inter import UnitBlockType, UnitBlock
 from glitch.parsers.parser import Parser
 from glitch.parsers.ansible import AnsibleParser
 from glitch.parsers.chef import ChefParser
@@ -29,6 +29,9 @@ from concurrent.futures import ThreadPoolExecutor, Future, as_completed
 # Otherwise, python will not consider these types of rules.
 from glitch.analysis.design.visitor import DesignVisitor  # type: ignore
 from glitch.analysis.security.visitor import SecurityVisitor  # type: ignore
+from glitch.dataflow.cfg import CFGBuilder
+from glitch.dataflow.utils import generate_dot, open_dot
+from glitch.dataflow.analysis import analyze_cfg_literals  # type: ignore
 
 
 def __parse_and_check(
@@ -313,6 +316,32 @@ def repr(
     parser = __get_parser(tech)
     inter = parser.parse(path, type, module)
     if inter != None:
+        print(json.dumps(inter.as_dict(), indent=2))
+
+@cli.command()
+@__common_params
+@click.option(
+    "--module",
+    is_flag=True,
+    default=False,
+    help="True if the path is a module, false otherwise.",
+)
+def CFG(
+    path: str,
+    type: UnitBlockType,
+    tech: str,  # type: ignore
+    module: bool,
+) -> None:
+    tech: Tech = __get_tech(tech)
+    parser = __get_parser(tech)
+    inter = parser.parse(path, type, module)
+    if isinstance(inter, UnitBlock):
+        cfg_builder = CFGBuilder(inter)
+        cfg = cfg_builder.build()
+        dot = generate_dot(cfg)
+        open_dot(dot)
+        analysis = analyze_cfg_literals(cfg)
+        analysis.print_analysis_results()
         print(json.dumps(inter.as_dict(), indent=2))
 
 

@@ -3,6 +3,8 @@ from enum import Enum
 from dataclasses import dataclass
 from typing import List, Union, Dict, Any, ClassVar
 
+from dataflow.literal_value import AbstractValue
+
 
 @dataclass
 class ElementInfo:
@@ -190,7 +192,16 @@ class Array(Value):
 class VariableReference(Value):
     def __init__(self, value: str, info: ElementInfo) -> None:
         super().__init__(info, value)
+        self.literal_annotation: AbstractValue | None = None
 
+    def as_dict(self) -> Dict[str, Any]:
+        data = {
+            **super().as_dict(),
+            "value": self.value,
+        }
+        if self.literal_annotation is not None:
+            data['literal_annotation'] = str(self.literal_annotation)
+        return data
 
 class FunctionCall(Expr):
     def __init__(self, name: str, args: List[Expr], info: ElementInfo) -> None:

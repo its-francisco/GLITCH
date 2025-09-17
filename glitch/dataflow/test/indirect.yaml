@@ -1,0 +1,9 @@
+- hosts: localhost
+  vars:
+    a_var: sekrit
+    another_var: '{{ a_var }}'
+  tasks:
+    - name: test
+      user:
+        name: me
+        password: '{{ another_var }}'
