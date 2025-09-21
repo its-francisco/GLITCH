@@ -4,8 +4,9 @@ from abc import ABC
 
 from glitch.repr.inter import (
     AtomicUnit, CodeElement, ConditionalStatement,
-    Variable, VariableReference, Dependency, UnitBlock,
-    FunctionCall, MethodCall, Expr, Assign, UnaryOperation, BinaryOperation
+    Variable, VariableReference, UnitBlock,
+    FunctionCall, MethodCall, Expr, UnaryOperation, BinaryOperation,
+    Dependency, Null
 )
 
 """
@@ -71,7 +72,7 @@ class CFG:
 
     def __str__(self):
         return f"CFG(Entry: {self.entry}, Exit: {self.exit}, Nodes: {list(self.nodes.values())})"
-		
+
 class CFGBuilder:
     def __init__(self, root: UnitBlock) -> None:
         self.root: UnitBlock = root
@@ -96,6 +97,12 @@ class CFGBuilder:
             return self._visit_varref(cfg, prev, block)
         elif isinstance(block, AtomicUnit):
             return self._visit_atomicunit(cfg, prev, block)
+        elif isinstance(block, Dependency):
+            #TODO what to do here? see tests/design/puppet/files/duplicate_block.pp
+            print("Dependency encountered in CFG construction, skipping.")
+            return prev
+        elif isinstance(block, Null):
+            return prev
         else:
             raise NotImplementedError(f"Unhandled block type: {type(block)}")
 
@@ -107,7 +114,7 @@ class CFGBuilder:
             current = self._visit_expression(cfg, current, attr.value)
 
         return current
-    
+
     def _visit_statement_list(self, cfg: CFG, prev: Node, statements: List[CodeElement]) -> Node:
         current = prev
 
@@ -120,7 +127,7 @@ class CFGBuilder:
         current = prev
 
         all_elements = sorted(
-                block.statements + block.atomic_units + 
+                block.statements + block.atomic_units +
                 block.dependencies + block.unit_blocks + block.variables,
                 key=lambda x: x.line
             )
@@ -157,14 +164,14 @@ class CFGBuilder:
             return if_merge_node
         elif cond.type == ConditionalStatement.ConditionType.SWITCH:
             pass
-        
+
         return current
-    
+
     def _visit_variable(self, cfg: CFG, prev: Node, var: Variable) -> Node:
         node = cfg.add_node(var)
         cfg.add_edge(prev, node)
         return node
-    
+
     def _visit_varref(self, cfg: CFG, prev: Node, varref: VariableReference) -> Node:
         node = cfg.add_node(varref)
         cfg.add_edge(prev, node)
@@ -172,17 +179,17 @@ class CFGBuilder:
 
     def _visit_expression(self, cfg: CFG, prev: Node, expr: Expr) -> Node:
         current = prev
-        
+
         if isinstance(expr, VariableReference):
             return self._visit_varref(cfg, current, expr)
 
         elif isinstance(expr, BinaryOperation):
             current = self._visit_expression(cfg, current, expr.left)
             current = self._visit_expression(cfg, current, expr.right)
-        
+
         elif isinstance(expr, UnaryOperation):
             current = self._visit_expression(cfg, current, expr.expr)
-        
+
         elif isinstance(expr, (FunctionCall, MethodCall)):
             for arg in expr.args:
                 current = self._visit_expression(cfg, current, arg)
@@ -190,5 +197,3 @@ class CFGBuilder:
                 current = self._visit_expression(cfg, current, expr.receiver)
 
         return current
-
-   

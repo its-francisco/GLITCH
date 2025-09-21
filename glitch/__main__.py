@@ -31,7 +31,7 @@ from glitch.analysis.design.visitor import DesignVisitor  # type: ignore
 from glitch.analysis.security.visitor import SecurityVisitor  # type: ignore
 from glitch.dataflow.cfg import CFGBuilder
 from glitch.dataflow.utils import generate_dot, open_dot
-from glitch.dataflow.analysis import analyze_cfg_literals  # type: ignore
+from glitch.dataflow.analysis import LiteralAnalysis, LiteralAnalysisResult, analyze_cfg_literals  # type: ignore
 
 
 def __parse_and_check(
@@ -41,9 +41,14 @@ def __parse_and_check(
     parser: Parser,
     analyses: List[RuleVisitor],
     stats: FileStats,
+    dataflow: bool = False,
 ) -> Set[Error]:
     errors: Set[Error] = set()
     inter = parser.parse(path, type, module)
+    if dataflow:
+        cfg_builder = CFGBuilder(inter)
+        cfg = cfg_builder.build()
+        literal_analysis_result = LiteralAnalysis.analyze(cfg)
     # Avoids problems with multiple threads (and possibly multiple files)
     # sharing the same object
     analyses = deepcopy(analyses)
@@ -208,6 +213,13 @@ def cli():
     help="Number of parallel workers to use. Defaults to 1.",
     default=1,
 )
+@click.option(
+    "--dataflow",
+    type=bool,
+    is_flag=True,
+    default=False,
+    help="Whether to perform dataflow analysis (if applicable). Defaults to False.",
+)
 @click.argument("output", type=click.Path(), required=False)
 def lint(
     tech: str,  # type: ignore
@@ -221,6 +233,7 @@ def lint(
     table_format: str,
     linter: bool,
     n_workers: int,
+    dataflow: bool,
 ):
     tech: Tech = __get_tech(tech)
     type = UnitBlockType(type)
@@ -264,7 +277,7 @@ def lint(
     for p in paths:
         futures.append(
             executor.submit(
-                __parse_and_check, type, p, module, parser, analyses, file_stats
+                __parse_and_check, type, p, module, parser, analyses, file_stats, dataflow
             )
         )
         future_to_path[futures[-1]] = p
@@ -340,9 +353,6 @@ def CFG(
         cfg = cfg_builder.build()
         dot = generate_dot(cfg)
         open_dot(dot)
-        analysis = analyze_cfg_literals(cfg)
-        analysis.print_analysis_results()
-        print(json.dumps(inter.as_dict(), indent=2))
 
 
 def main() -> None:

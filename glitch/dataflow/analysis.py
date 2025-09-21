@@ -1,22 +1,23 @@
-from typing import Dict
+from typing import Dict, List
 from functools import reduce
+from dataclasses import dataclass
 
-from glitch.repr.inter import Variable, VariableReference, Value, String, Integer, Float, Boolean, Null
-from glitch.dataflow.cfg import CFG, Node, VarNode, VarRefNode, DummyNode
-from glitch.dataflow.literal_value import AbstractValue, Unknown, Literal, Conflicting, Mixed, NonLiteral, meet
+from glitch.repr.inter import Expr, VariableReference, String, Integer, Float, Boolean, Null
+from glitch.dataflow.cfg import CFG, Node, VarNode, VarRefNode
+from glitch.dataflow.literal_value import AbstractValue, Unknown, Literal, NonLiteral, meet
 
 """
-Forward data flow analysis to detect variables bound to hardcoded literal values in the IR. 
+Forward data flow analysis to detect variables bound to hardcoded literal values in the IR.
 
 Lattice (per variable):
 
     T (Unknown)       → initial state (no information yet)
     Literal(v)        → variable is exactly literal v
-    Conflicting(S)    → variable is literal, but with multiple distinct 
+    Conflicting(S)    → variable is literal, but with multiple distinct
                         literal values depending on path
-    Mixed(S)          → variable is literal on some paths (values S), but 
+    Mixed(S)          → variable is literal on some paths (values S), but
                         non-literal on others
-    NonLiteral        → variable is never a literal (derived from expressions 
+    NonLiteral        → variable is never a literal (derived from expressions
                         or external input only)
 
 Ordering: T ≥ Literal(v), Conflicting(S), Mixed(S) ≥ NonLiteral
@@ -34,47 +35,62 @@ Meet:
   - Any ⊓ T = Any
 
 """
+@dataclass
+class LiteralAnalysisResult:
+    cfg: CFG
+    in_states: Dict[int, Dict[str, AbstractValue]]
+    out_states: Dict[int, Dict[str, AbstractValue]]
+
+    def __str__(self) -> str:
+        lines: List[str] = []
+        for node_id, node in self.cfg.nodes.items():
+            lines.append(f"Node {node_id}: {node}")
+            lines.append(f"  IN:  {self.in_states[node_id]}")
+            lines.append(f"  OUT: {self.out_states[node_id]}")
+        return "\n".join(lines)
 
 class LiteralAnalysis:
-    def __init__(self, cfg: CFG):
-        self.cfg = cfg
+
+    @classmethod
+    def analyze(cls, cfg: CFG) -> LiteralAnalysisResult:
         # NodeID -> var_name -> AbstractValue
-        self.in_states: Dict[int, Dict[str, AbstractValue]] = {}
-        self.out_states: Dict[int, Dict[str, AbstractValue]] = {}
-    
-    def analyze(self) -> None:
+        in_states: Dict[int, Dict[str, AbstractValue]] = {}
+        out_states: Dict[int, Dict[str, AbstractValue]] = {}
+
         # Initialize all states
-        for node_id in self.cfg.nodes:
-            self.in_states[node_id] = {}
-            self.out_states[node_id] = {}
-        
+        for node_id in cfg.nodes:
+            in_states[node_id] = {}
+            out_states[node_id] = {}
+
         # Worklist algorithm
-        worklist = list(self.cfg.nodes.values())
+        worklist = list(cfg.nodes.values())
         """
         possible efficiency improvement:
         in_worklist = set()    # track membership
         """
         while worklist:
             node = worklist.pop(0)
-            
+
             # Compute IN[node] = merge of OUT[pred] for all predecessors
-            old_in = self.in_states[node.id].copy()
-            new_in = self._merge_states([self.out_states[pred.id] for pred in node.preds])
-            self.in_states[node.id] = new_in
-            
+            old_in = in_states[node.id].copy()
+            new_in = cls._merge_states([out_states[pred.id] for pred in node.preds])
+            in_states[node.id] = new_in
+
             # Compute OUT[node] = transfer(IN[node])
-            old_out = self.out_states[node.id].copy()
-            new_out = self._transfer(node, new_in)
-            self.out_states[node.id] = new_out
-            
+            old_out = out_states[node.id].copy()
+            new_out = cls._transfer(node, new_in)
+            out_states[node.id] = new_out
+
             # If OUT changed, add successors to worklist
             if new_out != old_out or new_in != old_in:
                 for succ in node.succs:
                     if succ not in worklist:
                         worklist.append(succ)
 
+        return LiteralAnalysisResult(cfg, in_states, out_states)
 
-    def _merge_states(self, states: list[Dict[str, AbstractValue]]) -> Dict[str, AbstractValue]:
+    @classmethod
+    def _merge_states(cls, states: list[Dict[str, AbstractValue]]) -> Dict[str, AbstractValue]:
         if not states:
             return {}
 
@@ -86,14 +102,15 @@ class LiteralAnalysis:
             result[var] = reduce(meet, vals)
 
         return result
-    
-    def _transfer(self, node: Node, in_state: Dict[str, AbstractValue]) -> Dict[str, AbstractValue]:
+
+    @classmethod
+    def _transfer(cls, node: Node, in_state: Dict[str, AbstractValue]) -> Dict[str, AbstractValue]:
         """Transfer function per node type."""
         out_state = in_state.copy()
 
         if isinstance(node, VarNode):
             var_name = node.var.name
-            val = self._evaluate_expression(node.var.value, in_state)
+            val = cls._evaluate_expression(node.var.value, in_state)
             out_state[var_name] = val
 
         elif isinstance(node, VarRefNode):
@@ -104,31 +121,20 @@ class LiteralAnalysis:
             node.varRef.literal_annotation = val
 
         return out_state
-    
-    def _evaluate_expression(self, expr, state: Dict[str, AbstractValue]) -> AbstractValue:
+
+    @classmethod
+    def _evaluate_expression(cls, expr: Expr, state: Dict[str, AbstractValue]) -> AbstractValue:
         """Return abstract value for an expression under a state."""
-        # Direct literals
         if isinstance(expr, (String, Integer, Float, Boolean, Null)):
             return Literal(expr.value)
 
         # Variable reference
         if isinstance(expr, VariableReference):
-            # Look up variable in state and propagate its literal value
 
             return state.get(expr.value, Unknown())
 
         # Anything else = not literal
         return NonLiteral()
-    
-    def print_analysis_results(self) -> None:
-        print("=== Literal Analysis Results ===")
-        for node_id, node in self.cfg.nodes.items():
-            print(f"\nNode {node_id} ({type(node).__name__}):")
-            print(f"  IN:  {self.in_states[node_id]}")
-            print(f"  OUT: {self.out_states[node_id]}")
 
-
-def analyze_cfg_literals(cfg: CFG) -> LiteralAnalysis:
-    analysis = LiteralAnalysis(cfg)
-    analysis.analyze()
-    return analysis
+def analyze_cfg_literals(cfg: CFG) -> None:
+    LiteralAnalysis.analyze(cfg)

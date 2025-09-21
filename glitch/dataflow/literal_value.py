@@ -1,10 +1,10 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Set, TYPE_CHECKING
 from abc import ABC
 
 if TYPE_CHECKING:
-    from glitch.repr.inter import Value, VariableReference
+    from glitch.repr.inter import Value
 
 class AbstractValue(ABC):
     pass
@@ -47,7 +47,7 @@ def meet(v1: AbstractValue, v2: AbstractValue) -> AbstractValue:
             return Mixed({v1.value} | v2.values)
         elif isinstance(v2, NonLiteral):
             return Mixed({v1.value})
-    
+
     elif isinstance(v1, Conflicting):
         if isinstance(v2, Literal):
             return Conflicting(v1.values | {v2.value})

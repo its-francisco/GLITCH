@@ -2,6 +2,7 @@ import re
 from glitch.analysis.rules import Error
 from glitch.analysis.security.smell_checker import SecuritySmellChecker
 from glitch.analysis.security.visitor import SecurityVisitor
+from glitch.dataflow.literal_value import Conflicting, Mixed, Literal
 from glitch.repr.inter import *
 from glitch.analysis.expr_checkers.string_checker import StringChecker
 from glitch.analysis.expr_checkers.var_checker import VariableChecker
@@ -34,7 +35,9 @@ class HardcodedSecret(SecuritySmellChecker):
                 is not None
             )
             if secr_checker.check(name) and not whitelist_checker.check(name):
-                if not var_checker.check(value):
+                if not var_checker.check(value) or (
+                    isinstance(value, VariableReference) and isinstance(value.literal_annotation, (Literal, Conflicting, Mixed))
+                ):
                     if (
                         item in SecurityVisitor.PASSWORDS
                         and isinstance(value, String)
