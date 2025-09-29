@@ -66,7 +66,7 @@ def open_dot(dot: str) -> None:
                 proc = subprocess.Popen(["xdg-open", svg_file_path])
 
             # Wait a bit to ensure viewer has loaded the file
-            time.sleep(1)
+            time.sleep(10)
 
             # Wait for viewer to close
             proc.wait()

@@ -139,33 +139,33 @@ class CFGBuilder:
 
     def _visit_conditional(self, cfg: CFG, prev: Node, cond: ConditionalStatement) -> Node:
         current = prev
+        #if cond.type == ConditionalStatement.ConditionType.IF:
+        current = self._visit_expression(cfg, current, cond.condition)
+        condition_node = cfg.add_dummy_node()
 
-        if cond.type == ConditionalStatement.ConditionType.IF:
-            current = self._visit_expression(cfg, current, cond.condition)
-            condition_node = cfg.add_dummy_node()
+        cfg.add_edge(current, condition_node)
 
-            cfg.add_edge(current, condition_node)
+        if_merge_node = cfg.add_dummy_node()
 
-            if_merge_node = cfg.add_dummy_node()
+        then_node: Node = cfg.add_dummy_node()
+        cfg.add_edge(condition_node, then_node)
+        then_exit_node = self._visit_statement_list(cfg, then_node, cond.statements)
+        cfg.add_edge(then_exit_node, if_merge_node)
 
-            then_node: Node = cfg.add_dummy_node()
-            cfg.add_edge(condition_node, then_node)
-            then_exit_node = self._visit_statement_list(cfg, then_node, cond.statements)
-            cfg.add_edge(then_exit_node, if_merge_node)
+        if cond.else_statement:
+            elseNode: Node = cfg.add_dummy_node()
+            cfg.add_edge(condition_node, elseNode)
+            else_exit_node = self._visit(cfg, elseNode, cond.else_statement)
+            cfg.add_edge(else_exit_node, if_merge_node)
+        else:
+            cfg.add_edge(condition_node, if_merge_node)
 
-            if cond.else_statement:
-                elseNode: Node = cfg.add_dummy_node()
-                cfg.add_edge(condition_node, elseNode)
-                else_exit_node = self._visit_statement_list(cfg, elseNode, cond.else_statement.statements)
-                cfg.add_edge(else_exit_node, if_merge_node)
-            else:
-                cfg.add_edge(condition_node, if_merge_node)
+        return if_merge_node
+        # elif cond.type == ConditionalStatement.ConditionType.SWITCH:
+        #     pass
+        #     #raise NotImplementedError
 
-            return if_merge_node
-        elif cond.type == ConditionalStatement.ConditionType.SWITCH:
-            pass
-
-        return current
+        # return current
 
     def _visit_variable(self, cfg: CFG, prev: Node, var: Variable) -> Node:
         node = cfg.add_node(var)

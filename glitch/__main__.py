@@ -339,15 +339,23 @@ def repr(
     default=False,
     help="True if the path is a module, false otherwise.",
 )
+@click.option(
+    "--dump",
+    is_flag=True,
+    default=False,
+    help="True if repr should be shown, false otherwise.",
+)
 def CFG(
     path: str,
     type: UnitBlockType,
     tech: str,  # type: ignore
     module: bool,
+    dump: bool,
 ) -> None:
     tech: Tech = __get_tech(tech)
     parser = __get_parser(tech)
     inter = parser.parse(path, type, module)
+    if dump and inter != None: print(json.dumps(inter.as_dict(), indent=2))
     if isinstance(inter, UnitBlock):
         cfg_builder = CFGBuilder(inter)
         cfg = cfg_builder.build()
