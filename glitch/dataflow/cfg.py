@@ -9,6 +9,8 @@ from glitch.repr.inter import (
     Dependency, Null
 )
 
+from glitch.dataflow.scope_manager import ScopeManager
+
 """
 The CFG is composed of:
   - VarNode: variable definitions
@@ -22,26 +24,27 @@ class Node(ABC):
     preds: List["Node"] = field(default_factory=list)
     succs: List["Node"] = field(default_factory=list)
 
+class DefUseNode(Node, ABC):
+    qualified_name: str = field(default_factory=str) # scope-qualified name
 
 @dataclass
-class VarNode(Node):
+class VarNode(DefUseNode):
     var: Variable = field(default_factory=Variable)
 
     def __str__(self):
-        return f"VarNode(Var: {self.var})"
-
+        return f"VarNode(Var: {self.var}, QualifiedName: {self.qualified_name})"
 
 @dataclass
-class VarRefNode(Node):
-    varRef: VariableReference = field(default_factory=VariableReference)
+class VarRefNode(DefUseNode):
+    var_ref: VariableReference = field(default_factory=VariableReference)
 
     def __str__(self):
-        return f"VarRefNode(VarRef: {self.varRef})"
-
+        return f"VarRefNode(VarRef: {self.var_ref}, QualifiedName: {self.qualified_name})"
 
 @dataclass
 class DummyNode(Node):
-    pass
+    def __str__(self):
+        return f"DummyNode(ID: {self.id})"
 
 @dataclass
 class CFG:
@@ -56,11 +59,14 @@ class CFG:
         self.nodes[node.id] = node
         return node
 
-    def add_node(self, element: CodeElement) -> Node:
+    def add_def_use_node(self, element: (Variable | VariableReference)) -> DefUseNode:
+        assert isinstance(element, (Variable, VariableReference))
+
         if isinstance(element, Variable):
             node = VarNode(id=self.next_node_id, var=element)
         elif isinstance(element, VariableReference):
-            node = VarRefNode(id=self.next_node_id, varRef=element)
+            node = VarRefNode(id=self.next_node_id, var_ref=element)
+
         self.next_node_id += 1
         self.nodes[node.id] = node
         return node
@@ -76,6 +82,7 @@ class CFG:
 class CFGBuilder:
     def __init__(self, root: UnitBlock) -> None:
         self.root: UnitBlock = root
+        self.scope_manager: ScopeManager = ScopeManager()
 
     def build(self) -> CFG:
         cfg = CFG()
@@ -126,6 +133,8 @@ class CFGBuilder:
     def _visit_unitblock(self, cfg: CFG, prev: Node, block: UnitBlock) -> Node:
         current = prev
 
+        self.scope_manager.enter_scope(block)
+
         all_elements = sorted(
                 block.statements + block.atomic_units +
                 block.dependencies + block.unit_blocks + block.variables,
@@ -134,6 +143,8 @@ class CFGBuilder:
 
         for elem in all_elements:
             current = self._visit(cfg, current, elem)
+
+        self.scope_manager.exit_scope()
 
         return current
 
@@ -168,12 +179,24 @@ class CFGBuilder:
         # return current
 
     def _visit_variable(self, cfg: CFG, prev: Node, var: Variable) -> Node:
-        node = cfg.add_node(var)
-        cfg.add_edge(prev, node)
+        current = self._visit_expression(cfg, prev, var.value)
+        self.scope_manager.declare_variable(var)
+
+        node = cfg.add_def_use_node(var)
+        node.qualified_name = f"{var.name}@{self.scope_manager.current_scope_id}"
+
+        cfg.add_edge(current, node)
         return node
 
-    def _visit_varref(self, cfg: CFG, prev: Node, varref: VariableReference) -> Node:
-        node = cfg.add_node(varref)
+    def _visit_varref(self, cfg: CFG, prev: Node, var_ref: VariableReference) -> Node:
+        node = cfg.add_def_use_node(var_ref)
+        resolved_var = self.scope_manager.resolve_variable(var_ref)
+
+        if resolved_var:
+            node.qualified_name = f"{resolved_var.name}@{resolved_var.scope_id}"
+        else:
+            node.qualified_name = f"{var_ref.value}@<undeclared>"
+
         cfg.add_edge(prev, node)
         return node
 

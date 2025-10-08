@@ -109,28 +109,33 @@ class LiteralAnalysis:
         out_state = in_state.copy()
 
         if isinstance(node, VarNode):
-            var_name = node.var.name
-            val = cls._evaluate_expression(node.var.value, in_state)
+            #TODO: have to add support to Binary ops and more
+            val = cls._evaluate_expression(node, node.var.value, in_state)
+            var_name = node.qualified_name
             out_state[var_name] = val
 
         elif isinstance(node, VarRefNode):
-            var_name = node.varRef.value
+            var_name = node.qualified_name
             val = in_state.get(var_name, Unknown())
 
+
             # Annotate the VarRefNode with its abstract value
-            node.varRef.literal_annotation = val
+            node.var_ref.literal_annotation = val
 
         return out_state
 
     @classmethod
-    def _evaluate_expression(cls, expr: Expr, state: Dict[str, AbstractValue]) -> AbstractValue:
+    def _evaluate_expression(cls, parent: Node, expr: Expr, state: Dict[str, AbstractValue]) -> AbstractValue:
         """Return abstract value for an expression under a state."""
         if isinstance(expr, (String, Integer, Float, Boolean, Null)):
             return Literal(expr.value)
 
         # Variable reference
         if isinstance(expr, VariableReference):
-
+            # for preds in parent, find the corresponding VarRefNode and get its annotation
+            for pred in parent.preds:
+                if isinstance(pred, VarRefNode) and pred.var_ref == expr:
+                    return pred.var_ref.literal_annotation or Unknown()
             return state.get(expr.value, Unknown())
 
         # Anything else = not literal

@@ -1,21 +1,19 @@
 from glitch.dataflow.cfg import CFG, DummyNode, VarNode, VarRefNode
 
-def generate_dot(cfg: CFG) -> None:
+def generate_dot(cfg: CFG) -> str:
     """
     Generates a Graphviz DOT file for the CFG
     """
-    lines = ["digraph CFG {", "  rankdir=TD;"]  
+    lines = ["digraph CFG {", "  rankdir=TD;"]
 
     # Define nodes
     for node_id, node in cfg.nodes.items():
+        label = str(node)
         if isinstance(node, VarNode):
-            label = f"VarNode\\n{node.var.name}"
             color = "lightblue"
         elif isinstance(node, VarRefNode):
-            label = f"VarRefNode\\n{node.varRef.value}"
             color = "lightgreen"
         elif isinstance(node, DummyNode):
-            label = f"DummyNode\\n{node.id}"
             color = "gray"
         else:
             label = f"{type(node).__name__}\\n{node.id}"
@@ -54,7 +52,7 @@ def open_dot(dot: str) -> None:
     # Output SVG file
     with tempfile.NamedTemporaryFile(suffix='.svg', mode='w', delete=False) as svg_file:
         svg_file_path = svg_file.name
-        try: 
+        try:
             subprocess.run(["dot", "-Tsvg", dot_file_path, "-o", svg_file_path], check=True)
 
             # Open the generated SVG based on the OS
@@ -66,10 +64,7 @@ def open_dot(dot: str) -> None:
                 proc = subprocess.Popen(["xdg-open", svg_file_path])
 
             # Wait a bit to ensure viewer has loaded the file
-            time.sleep(10)
-
-            # Wait for viewer to close
-            proc.wait()
+            time.sleep(20)
         finally:
             # Clean up temporary files
             for f in [dot_file_path, svg_file_path]:
