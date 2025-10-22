@@ -200,7 +200,7 @@ class VariableReference(Value):
             "value": self.value,
         }
         if self.literal_annotation is not None:
-            data['literal_annotation'] = str(self.literal_annotation)
+            data['literal_annotation'] = self.literal_annotation.as_dict()
         return data
 
 class FunctionCall(Expr):
