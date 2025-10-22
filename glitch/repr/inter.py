@@ -3,7 +3,7 @@ from enum import Enum
 from dataclasses import dataclass
 from typing import List, Union, Dict, Any, ClassVar
 
-from dataflow.literal_value import AbstractValue
+from glitch.dataflow.literal_value import AbstractValue
 
 
 @dataclass

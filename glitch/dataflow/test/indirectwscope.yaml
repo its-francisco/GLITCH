@@ -1,0 +1,69 @@
+---
+- name: Configure database server
+  hosts: dbservers
+  vars:
+    # Hardcoded secret here
+    t: "SuperSecret123!"
+    x: "{{ t }}"
+    u: postgres
+  
+  tasks:
+    - name: Set database credentials
+      set_fact:
+        db_creds: "{{ x }}"
+    
+    - name: Create database user
+      postgresql_user:
+        name: admin
+        password: "{{ x }}"  # This IS a secret (flows from hardcoded t)
+        state: present
+      become: yes
+      become_user: "{{ u }}"
+    
+    - name: Write connection string to file
+      lineinfile:
+        path: /etc/app/db.conf
+        line: "DB_CONN=postgresql://admin:{{ x }}@localhost/mydb"
+        create: yes
+
+# Second play - different scope
+- name: Configure web server
+  hosts: webservers
+  vars:
+    # Same variable name, but NOT a secret - comes from external source
+    x: "{{ lookup('env', 'DB_PASSWORD') }}"
+    t: "webserver"
+    u: nginx
+  
+  tasks:
+    - name: Create web user
+      user:
+        name: "{{ t }}"
+        password: "{{ x }}"  # This is NOT a hardcoded secret
+        state: present
+      become: yes
+    
+    - name: Configure app
+      template:
+        src: app.conf.j2
+        dest: /etc/app/config.yml
+      vars:
+        # Task-level scope - shadows play vars
+        x: "{{ lookup('file', '/var/secrets/api_key') }}"
+        connection_timeout: 30
+    
+    - name: Debug message
+      debug:
+        msg: "Configured {{ u }} with user {{ t }}"
+
+# Third play - variable reuse with safe value
+- name: Setup monitoring
+  hosts: monitoring
+  vars:
+    t: "monitoring_user"  # Same name, different value, NOT a secret
+  
+  tasks:
+    - name: Create monitoring user
+      user:
+        name: "{{ t }}"
+        state: present

@@ -1,0 +1,21 @@
+---
+- name: Configure system
+  hosts: servers
+  vars:
+    # Outer scope - NOT hardcoded (safe)
+    a: "{{ lookup('env', 'DATABASE_PASSWORD') }}"
+  
+  tasks:
+    - name: Some task with inner scope
+      debug:
+        msg: "Setting up..."
+      vars:
+        # Inner scope - HARDCODED secret (dangerous)
+        a: "HardcodedSecret999!"
+    
+    - name: Create database user
+      postgresql_user:
+        name: admin
+        # Uses outer scope db_pass - which one is it?
+        password: "{{ a }}"
+        state: present

@@ -345,22 +345,31 @@ def repr(
     default=False,
     help="True if repr should be shown, false otherwise.",
 )
-def CFG(
+@click.option(
+    "--dataflow",
+    is_flag=True,
+    default=False,
+    help="True if dataflow analysis should be performed, false otherwise.",
+)
+def cfg(
     path: str,
     type: UnitBlockType,
     tech: str,  # type: ignore
     module: bool,
     dump: bool,
+    dataflow: bool,
 ) -> None:
     tech: Tech = __get_tech(tech)
     parser = __get_parser(tech)
     inter = parser.parse(path, type, module)
-    if dump and inter != None: print(json.dumps(inter.as_dict(), indent=2))
     if isinstance(inter, UnitBlock):
         cfg_builder = CFGBuilder(inter)
         cfg = cfg_builder.build()
-        dot = generate_dot(cfg)
-        open_dot(dot)
+        if dataflow:
+            literal_analysis_result: LiteralAnalysisResult = analyze_cfg_literals(cfg)
+        if dump and inter != None: print(json.dumps(inter.as_dict(), indent=2))
+        # dot = generate_dot(cfg)
+        # open_dot(dot)
 
 
 def main() -> None:

@@ -5,9 +5,14 @@ class ScopeManager:
     def __init__(self):
         self.scope_stack: List[Dict] = []
         self.current_scope_id = 0
+        self.unique_scope_ids = set([0])
+        self.parent_scope_id = -1
 
     def enter_scope(self, unit: CodeElement):
-        self.current_scope_id += 1
+        self.parent_scope_id = self.current_scope_id
+        while self.current_scope_id in self.unique_scope_ids:
+            self.current_scope_id += 1
+        self.unique_scope_ids.add(self.current_scope_id)
         new_scope = {
             'id': self.current_scope_id,
             'unit': unit,
@@ -18,6 +23,7 @@ class ScopeManager:
         return new_scope
 
     def exit_scope(self):
+        self.current_scope_id = self.parent_scope_id
         return self.scope_stack.pop()
 
     def declare_variable(self, var: Variable):

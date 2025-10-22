@@ -1,0 +1,8 @@
+- ini_file:
+    path: "{{ opensds_conf_file }}"
+    section: osdslet
+    option: "prometheus_push_gateway_url"
+    value: "{{ prometheus_push_gateway_url }}"
+  vars:
+      prometheus_push_gateway_url: 'http://{{ host_ip }}:9091'
+      host_ip: 127.0.0.1  
