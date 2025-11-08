@@ -872,3 +872,5 @@ class TestIRJsonLintingDataflow(unittest.TestCase):
           self.assertIsNotNone(unit_block)
 
           self.__finds_variable_reference(unit_block, 'a', 'root')
+
+    

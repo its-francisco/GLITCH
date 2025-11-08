@@ -9,7 +9,8 @@ from glitch.repr.inter import (
     GreaterThan, GreaterThanOrEqual, In, Subtract, Multiply,
     Divide, Modulo, Power, RightShift, LeftShift, Access,
     BitwiseAnd, BitwiseOr, BitwiseXor, Assign,
-    ConditionalStatement, Comment, Dependency, Expr, Value
+    ConditionalStatement, Comment, Dependency, Expr, Value,
+    Project, Module, File, Folder
 )
 
 
@@ -268,7 +269,66 @@ class IRBuilder:
         else:
             # Try as expression
             return IRBuilder.json_to_expr(data)
+        
 
+
+    @staticmethod
+    def json_to_module(data: Dict[str, Any]) -> Module:
+        """Convert JSON dictionary to Module IR object."""
+        module = Module(name=data.get("name", ""), path=data.get("path", ""))
+        
+        # Add blocks
+        for block_data in data.get("blocks", []):
+            module.add_block(IRBuilder.json_to_unit_block(block_data))
+        
+        # Add nested modules
+        for mod_data in data.get("modules", []):
+            module.modules.append(IRBuilder.json_to_module(mod_data))
+        
+        # Add folder content
+        folder_data = data.get("folder", {})
+        module.folder.name = folder_data.get("name", "")
+        for content in folder_data.get("content", []):
+            if "content" in content:
+                # It's a folder
+                subfolder = Folder(name=content.get("name", ""))
+                module.folder.add_folder(subfolder)
+            else:
+                # It's a file
+                file = File(name=content.get("name", ""))
+                module.folder.add_file(file)
+        
+        return module
+
+    @staticmethod
+    def json_to_project(data: Dict[str, Any]) -> Project:
+        """Convert JSON dictionary to Project IR object."""
+        project = Project(name=data.get("name", ""))
+        
+        # Add modules
+        for module_data in data.get("modules", []):
+            project.add_module(IRBuilder.json_to_module(module_data))
+        
+        # Add blocks
+        for block_data in data.get("blocks", []):
+            project.add_block(IRBuilder.json_to_unit_block(block_data))
+        
+        return project
+        
+    @staticmethod
+    def json_to_ir(data: Dict[str, Any]) -> UnitBlock | Project | Module:
+        """Convert JSON dictionary to UnitBlock IR object."""
+        keys = sorted(list(data.keys()))
+        # if keys include only name, modules and blocks its a project
+        if keys == sorted(['name', 'modules', 'blocks']): # not reference equality, value equality
+            return IRBuilder.json_to_project(data)
+        if keys == sorted(['name', 'path', 'blocks', 'modules', 'folder']):
+            return IRBuilder.json_to_module(data)
+        if 'ir_type' in keys and data.get('ir_type') == 'UnitBlock':
+            return IRBuilder.json_to_unit_block(data)
+        raise ValueError("Unknown IR type in JSON data, keys: " + str(keys))
+
+    
     @classmethod
     def from_json(cls, json_str: str) -> UnitBlock:
         """
@@ -295,148 +355,3 @@ class IRBuilder:
             UnitBlock object
         """
         return cls.json_to_unit_block(data)
-
-
-# Example usage
-if __name__ == "__main__":
-    json_string = """
-    {
-      "ir_type": "UnitBlock",
-      "line": -33550336,
-      "column": -33550336,
-      "end_line": -33550336,
-      "end_column": -33550336,
-      "code": "",
-      "statements": [],
-      "dependencies": [],
-      "comments": [],
-      "variables": [],
-      "atomic_units": [],
-      "unit_blocks": [
-        {
-          "ir_type": "UnitBlock",
-          "line": -33550336,
-          "column": -33550336,
-          "end_line": -33550336,
-          "end_column": -33550336,
-          "code": "",
-          "statements": [],
-          "dependencies": [],
-          "comments": [],
-          "variables": [
-            {
-              "ir_type": "Variable",
-              "line": 3,
-              "column": 5,
-              "end_line": 3,
-              "end_column": 18,
-              "code": "    a_var: sekrit\\n",
-              "name": "a_var",
-              "value": {
-                "ir_type": "String",
-                "line": 3,
-                "column": 12,
-                "end_line": 3,
-                "end_column": 18,
-                "code": "sekrit",
-                "value": "sekrit"
-              }
-            }
-          ],
-          "atomic_units": [
-            {
-              "ir_type": "AtomicUnit",
-              "line": 5,
-              "column": -33550336,
-              "end_line": -33550336,
-              "end_column": -33550336,
-              "code": "    - name: test\\n      user:\\n        name: me\\n        password: '{{ a_var }}'",
-              "statements": [],
-              "name": {
-                "ir_type": "String",
-                "line": 5,
-                "column": 13,
-                "end_line": 5,
-                "end_column": 17,
-                "code": "test",
-                "value": "test"
-              },
-              "type": "user",
-              "attributes": [
-                {
-                  "ir_type": "Attribute",
-                  "line": 7,
-                  "column": 9,
-                  "end_line": 7,
-                  "end_column": 17,
-                  "code": "name: me",
-                  "name": "name",
-                  "value": {
-                    "ir_type": "String",
-                    "line": 7,
-                    "column": 15,
-                    "end_line": 7,
-                    "end_column": 17,
-                    "code": "me",
-                    "value": "me"
-                  }
-                },
-                {
-                  "ir_type": "Attribute",
-                  "line": 8,
-                  "column": 9,
-                  "end_line": 8,
-                  "end_column": 32,
-                  "code": "password: '{{ a_var }}'",
-                  "name": "password",
-                  "value": {
-                    "ir_type": "VariableReference",
-                    "line": 8,
-                    "column": 23,
-                    "end_line": 8,
-                    "end_column": 28,
-                    "code": "a_var }}'",
-                    "value": "a_var"
-                  }
-                }
-              ]
-            }
-          ],
-          "unit_blocks": [],
-          "attributes": [
-            {
-              "ir_type": "Attribute",
-              "line": 1,
-              "column": 3,
-              "end_line": 1,
-              "end_column": 19,
-              "code": "hosts: localhost",
-              "name": "hosts",
-              "value": {
-                "ir_type": "String",
-                "line": 1,
-                "column": 10,
-                "end_line": 1,
-                "end_column": 19,
-                "code": "localhost",
-                "value": "localhost"
-              }
-            }
-          ],
-          "name": "",
-          "path": "dataflow/test/indirect-simple.yaml",
-          "type": "block"
-        }
-      ],
-      "attributes": [],
-      "name": "dataflow/test/indirect-simple.yaml",
-      "path": "dataflow/test/indirect-simple.yaml",
-      "type": "script"
-    }
-    """
-    
-    # Build the IR object from JSON
-    ir_object = IRBuilder.from_json(json_string)
-    
-    # Verify by converting back to dict and printing
-    print(json.dumps(ir_object.as_dict(), indent=2))
