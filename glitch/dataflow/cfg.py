@@ -6,7 +6,7 @@ from glitch.repr.inter import (
     AtomicUnit, CodeElement, ConditionalStatement,
     Variable, VariableReference, UnitBlock,
     FunctionCall, MethodCall, Expr, UnaryOperation, BinaryOperation,
-    Dependency, Null
+    Dependency, Null, Value, String, Integer, Float, Boolean, Hash, Complex, Array
 )
 
 from glitch.dataflow.scope_manager import ScopeManager
@@ -202,9 +202,8 @@ class CFGBuilder:
 
     def _visit_expression(self, cfg: CFG, prev: Node, expr: Expr) -> Node:
         current = prev
-
-        if isinstance(expr, VariableReference):
-            return self._visit_varref(cfg, current, expr)
+        if isinstance(expr, Value):
+            current = _visit_value(self, cfg, current, expr)
 
         elif isinstance(expr, BinaryOperation):
             current = self._visit_expression(cfg, current, expr.left)
@@ -219,4 +218,29 @@ class CFGBuilder:
             if isinstance(expr, MethodCall):
                 current = self._visit_expression(cfg, current, expr.receiver)
 
+        else:
+            raise NotImplementedError(f"Unhandled expression type: {type(expr)}")
+
         return current
+
+def _visit_value(self, cfg: CFG, prev: Node, value: Value) -> Node:
+    current = prev
+    if isinstance(value, (String, Integer, Complex, Float, Boolean, Null)):
+        pass  # literals do not create CFG nodes
+
+    elif isinstance(value, VariableReference):
+        return self._visit_varref(cfg, current, value)
+
+    elif isinstance(value, Hash):
+        for key, val in value.value.items():
+            current = self._visit_expression(cfg, current, key)
+            current = self._visit_expression(cfg, current, val)
+
+    elif isinstance(value, Array):
+        for item in value.value:
+            current = self._visit_expression(cfg, current, item)
+
+    else:
+        raise NotImplementedError(f"Unhandled expression type: {type(value)}")
+
+    return current
