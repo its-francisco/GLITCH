@@ -164,7 +164,7 @@ class CFGBuilder:
     def _visit_unitblock(self, cfg: CFG, prev: Node, block: UnitBlock) -> Node:
         current = prev
 
-        # self.scope_manager.enter_scope(block)
+        self.scope_manager.enter_scope(block)
 
         all_elements = sorted(
                 block.statements + block.atomic_units +
@@ -176,7 +176,7 @@ class CFGBuilder:
         for elem in all_elements:
             current = self._visit(cfg, current, elem)
 
-        # self.scope_manager.exit_scope()
+        self.scope_manager.exit_scope()
 
         return current
 
