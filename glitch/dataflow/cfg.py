@@ -104,6 +104,8 @@ class CFGBuilder:
             return self._visit_varref(cfg, prev, block)
         elif isinstance(block, AtomicUnit):
             return self._visit_atomicunit(cfg, prev, block)
+        elif isinstance(block, Expr):
+            return self._visit_expression(cfg, prev, block)
         elif isinstance(block, Dependency):
             #TODO what to do here? see tests/design/puppet/files/duplicate_block.pp
             print("Dependency encountered in CFG construction, skipping.")
@@ -217,7 +219,8 @@ class CFGBuilder:
                 current = self._visit_expression(cfg, current, arg)
             if isinstance(expr, MethodCall):
                 current = self._visit_expression(cfg, current, expr.receiver)
-
+        elif isinstance(expr, ConditionalStatement):
+            current = self._visit_conditional(cfg, current, expr)
         else:
             raise NotImplementedError(f"Unhandled expression type: {type(expr)}")
 
