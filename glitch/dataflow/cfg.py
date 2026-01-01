@@ -6,8 +6,10 @@ from glitch.repr.inter import (
     AtomicUnit, CodeElement, ConditionalStatement,
     Variable, VariableReference, UnitBlock,
     FunctionCall, MethodCall, Expr, UnaryOperation, BinaryOperation,
-    Dependency, Null, Value, String, Integer, Float, Boolean, Hash, Complex, Array
+    Dependency, Null, Value, String, Integer, Float, Boolean, Hash, Complex, Array,
+    Block, KeyValue, Comment, Attribute
 )
+from glitch.parsers.chef import AddArgs
 
 from glitch.dataflow.scope_manager import ScopeManager
 
@@ -94,33 +96,60 @@ class CFGBuilder:
         return cfg
 
     def _visit(self, cfg: CFG, prev: Node, block: CodeElement) -> Node:
-        if isinstance(block, UnitBlock):
-            return self._visit_unitblock(cfg, prev, block)
-        elif isinstance(block, ConditionalStatement):
-            return self._visit_conditional(cfg, prev, block)
-        elif isinstance(block, Variable):
-            return self._visit_variable(cfg, prev, block)
-        elif isinstance(block, VariableReference):
-            return self._visit_varref(cfg, prev, block)
-        elif isinstance(block, AtomicUnit):
-            return self._visit_atomicunit(cfg, prev, block)
-        elif isinstance(block, Expr):
+        if isinstance(block, Expr):
             return self._visit_expression(cfg, prev, block)
+        elif isinstance(block, Block):
+            return self._visit_block(cfg, prev, block)
+        elif isinstance(block, KeyValue):
+            return self._visit_keyvalue(cfg, prev, block)
+        elif isinstance(block, Comment):
+            return prev
         elif isinstance(block, Dependency):
             #TODO what to do here? see tests/design/puppet/files/duplicate_block.pp
             print("Dependency encountered in CFG construction, skipping.")
             return prev
-        elif isinstance(block, Null):
-            return prev
+        # elif isinstance(block, Variable):
+        #     return self._visit_variable(cfg, prev, block)
+        # elif isinstance(block, VariableReference):
+        #     return self._visit_varref(cfg, prev, block)
+        # elif isinstance(block, Null):
+        #     return prev
         else:
+            raise NotImplementedError(f"Unhandled CodeElement type: {type(block)}")
+
+    def _visit_block(self, cfg: CFG, prev: Node, block: Block) -> Node:
+        if isinstance(block, ConditionalStatement):
+            return self._visit_conditional(cfg, prev, block)
+        elif isinstance(block, UnitBlock):
+            return self._visit_unitblock(cfg, prev, block)
+        elif isinstance(block, AtomicUnit):
+            return self._visit_atomicunit(cfg, prev, block)
+        else:
+            # TODO Can a block exist by itself?
             raise NotImplementedError(f"Unhandled block type: {type(block)}")
 
+    def _visit_keyvalue(self, cfg: CFG, prev: Node, kv: KeyValue) -> Node:
+        if isinstance(kv, Variable):
+            return self._visit_variable(cfg, prev, kv)
+        elif isinstance(kv, Attribute):
+            return self._visit_attribute(cfg, prev, kv)
+        else:
+            # TODO Can a kv exist by itself?
+            raise NotImplementedError(f"Unhandled KeyValue type: {type(kv)}")
+
+    def _visit_attribute(self, cfg: CFG, prev: Node, attr: Attribute) -> Node:
+        return self._visit_expression(cfg, prev, attr.value)
 
     def _visit_atomicunit(self, cfg: CFG, prev: Node, atomic_unit: AtomicUnit) -> Node:
         current = prev
 
-        for attr in atomic_unit.attributes:
-            current = self._visit_expression(cfg, current, attr.value)
+        all_elements = sorted(
+            atomic_unit.statements + atomic_unit.attributes + [atomic_unit.name],
+            key=lambda x: x.line
+        )
+
+        for elem in all_elements:
+            current = self._visit(cfg, current, elem)
 
         return current
 
@@ -135,18 +164,19 @@ class CFGBuilder:
     def _visit_unitblock(self, cfg: CFG, prev: Node, block: UnitBlock) -> Node:
         current = prev
 
-        self.scope_manager.enter_scope(block)
+        # self.scope_manager.enter_scope(block)
 
         all_elements = sorted(
                 block.statements + block.atomic_units +
-                block.dependencies + block.unit_blocks + block.variables,
+                block.dependencies + block.unit_blocks + block.variables
+                + block.comments + block.attributes,
                 key=lambda x: x.line
             )
 
         for elem in all_elements:
             current = self._visit(cfg, current, elem)
 
-        self.scope_manager.exit_scope()
+        # self.scope_manager.exit_scope()
 
         return current
 
@@ -242,6 +272,10 @@ def _visit_value(self, cfg: CFG, prev: Node, value: Value) -> Node:
     elif isinstance(value, Array):
         for item in value.value:
             current = self._visit_expression(cfg, current, item)
+
+    elif isinstance(value, AddArgs):
+        for arg in value.value:
+            current = self._visit_expression(cfg, current, arg)
 
     else:
         raise NotImplementedError(f"Unhandled expression type: {type(value)}")
