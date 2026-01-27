@@ -225,41 +225,17 @@ class CFGBuilder:
         resolved_var = self.scope_manager.resolve_variable(var_ref)
 
         if resolved_var:
-            node.qualified_name = f"{resolved_var.name}@{resolved_var.scope_id}"
+            node.qualified_name = f"{resolved_var.name}@{resolved_var.scope_id}" # type: ignore
         else:
             node.qualified_name = f"{var_ref.value}@<undeclared>"
 
         cfg.add_edge(prev, node)
         return node
-
-    def _visit_expression(self, cfg: CFG, prev: Node, expr: Expr) -> Node:
+    
+    def _visit_value(self, cfg: CFG, prev: Node, value: Value) -> Node:
         current = prev
-        if isinstance(expr, Value):
-            current = _visit_value(self, cfg, current, expr)
-
-        elif isinstance(expr, BinaryOperation):
-            current = self._visit_expression(cfg, current, expr.left)
-            current = self._visit_expression(cfg, current, expr.right)
-
-        elif isinstance(expr, UnaryOperation):
-            current = self._visit_expression(cfg, current, expr.expr)
-
-        elif isinstance(expr, (FunctionCall, MethodCall)):
-            for arg in expr.args:
-                current = self._visit_expression(cfg, current, arg)
-            if isinstance(expr, MethodCall):
-                current = self._visit_expression(cfg, current, expr.receiver)
-        elif isinstance(expr, ConditionalStatement):
-            current = self._visit_conditional(cfg, current, expr)
-        else:
-            raise NotImplementedError(f"Unhandled expression type: {type(expr)}")
-
-        return current
-
-def _visit_value(self, cfg: CFG, prev: Node, value: Value) -> Node:
-    current = prev
-    if isinstance(value, (String, Integer, Complex, Float, Boolean, Null)):
-        pass  # literals do not create CFG nodes
+        if isinstance(value, (String, Integer, Complex, Float, Boolean, Null)):
+            pass  # literals do not create CFG nodes
 
     elif isinstance(value, VariableReference):
         return self._visit_varref(cfg, current, value)

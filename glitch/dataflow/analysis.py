@@ -128,7 +128,7 @@ class LiteralAnalysis:
     def _evaluate_expression(cls, parent: Node, expr: Expr, state: Dict[str, AbstractValue]) -> AbstractValue:
         """Return abstract value for an expression under a state."""
         if isinstance(expr, (String, Integer, Float, Boolean, Null)):
-            return Literal(expr.value)
+            return Literal(expr)
 
         # Variable reference
         if isinstance(expr, VariableReference):

@@ -22,21 +22,21 @@ class Literal(AbstractValue):
     value: "Value"
 
     def as_dict(self) -> Dict[str, Any]:
-        return {"type": "Literal", "values": self.value}
+        return {"type": "Literal", "value": self.value.as_dict()}
 
 @dataclass(frozen=True)
 class Conflicting(AbstractValue):
     values: Set["Value"]
 
     def as_dict(self) -> Dict[str, Any]:
-        return {"type": "Conflicting", "values": list(self.values)}
+        return {"type": "Conflicting", "values": [v.as_dict() for v in self.values]}
 
 @dataclass(frozen=True)
 class Mixed(AbstractValue):
     values: Set["Value"]
 
     def as_dict(self) -> Dict[str, Any]:
-        return {"type": "Mixed", "values": list(self.values)}
+        return {"type": "Mixed", "values": [v.as_dict() for v in self.values]}
 
 @dataclass(frozen=True)
 class NonLiteral(AbstractValue):
