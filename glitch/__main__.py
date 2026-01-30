@@ -34,7 +34,7 @@ from glitch.dataflow.utils import generate_dot, open_dot
 from glitch.dataflow.analysis import LiteralAnalysis, LiteralAnalysisResult, analyze_cfg_literals  # type: ignore
 
 
-def annotate_ir(inter, dataflow: bool) -> None:
+def annotate_ir(inter, dataflow: bool, parser: Optional[Parser] = None) -> None:
     """If dataflow is enabled, build CFG(s) for the given IR and run literal analysis.
 
     Handles UnitBlock, Module and Project IR objects. Returns a list of
@@ -48,7 +48,7 @@ def annotate_ir(inter, dataflow: bool) -> None:
 
     # UnitBlock: single CFG
     if isinstance(inter, UnitBlock):
-        cfg_builder = CFGBuilder(inter)
+        cfg_builder = CFGBuilder(inter, parser)
         cfg = cfg_builder.build()
         analyze_cfg_literals(cfg)
         # if res is not None:
@@ -59,7 +59,7 @@ def annotate_ir(inter, dataflow: bool) -> None:
     # Module: analyze each block
     if isinstance(inter, Module):
         for block in inter.blocks:
-            cfg_builder = CFGBuilder(block)
+            cfg_builder = CFGBuilder(block, parser)
             cfg = cfg_builder.build()
             analyze_cfg_literals(cfg)
         #     if res is not None:
@@ -71,7 +71,7 @@ def annotate_ir(inter, dataflow: bool) -> None:
     if isinstance(inter, Project):
         for module in inter.modules:
             for block in module.blocks:
-                cfg_builder = CFGBuilder(block)
+                cfg_builder = CFGBuilder(block, parser)
                 cfg = cfg_builder.build()
                 analyze_cfg_literals(cfg)
                 # if res is not None:
@@ -94,7 +94,7 @@ def __parse_and_check(
     errors: Set[Error] = set()
     inter = parser.parse(path, type, module)
     if dataflow:
-        annotate_ir(inter, True)
+        annotate_ir(inter, True, parser)
     # Avoids problems with multiple threads (and possibly multiple files)
     # sharing the same object
     analyses = deepcopy(analyses)
@@ -420,7 +420,7 @@ def cfg(
         with open(path, "r") as f:
             data = json.load(f)
             inter = IRBuilder.json_to_ir(data)
-            annotate_ir(inter, dataflow)
+            annotate_ir(inter, dataflow, None)
             if dump and inter is not None:
                 print(json.dumps(inter.as_dict(), indent=2))
             return
@@ -429,7 +429,7 @@ def cfg(
     inter = parser.parse(path, type, module)
     if isinstance(inter, UnitBlock):
         if dataflow:
-            annotate_ir(inter, True)
+            annotate_ir(inter, True, parser)
         if dump and inter is not None:
             print(json.dumps(inter.as_dict(), indent=2))
         # dot = generate_dot(cfg)

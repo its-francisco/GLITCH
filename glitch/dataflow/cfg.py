@@ -1,15 +1,17 @@
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Set
 from dataclasses import dataclass, field
 from abc import ABC
+import os
 
 from glitch.repr.inter import (
     AtomicUnit, CodeElement, ConditionalStatement,
-    Variable, VariableReference, UnitBlock,
+    Variable, VariableReference, UnitBlock, UnitBlockType,
     FunctionCall, MethodCall, Expr, UnaryOperation, BinaryOperation,
     Dependency, Null, Value, String, Integer, Float, Boolean, Hash, Complex, Array,
     Block, KeyValue, Comment, Attribute
 )
 from glitch.parsers.chef import AddArgs
+from glitch.parsers.parser import Parser
 
 from glitch.dataflow.scope_manager import ScopeManager
 
@@ -82,17 +84,21 @@ class CFG:
         return f"CFG(Entry: {self.entry}, Exit: {self.exit}, Nodes: {list(self.nodes.values())})"
 
 class CFGBuilder:
-    def __init__(self, root: UnitBlock) -> None:
+    def __init__(self, root: UnitBlock, parser: Optional[Parser] = None) -> None:
         self.root: UnitBlock = root
         self.scope_manager: ScopeManager = ScopeManager()
+        self.parser: Optional[Parser] = parser
+        self.visited_files: Set[str] = set()
+        if root.path:
+            self.visited_files.add(os.path.abspath(root.path))
 
     def build(self) -> CFG:
         cfg = CFG()
         entry = cfg.add_dummy_node()
-        exit = cfg.add_dummy_node()
+        exit_node = cfg.add_dummy_node()
         prev = entry
         prev = self._visit(cfg, prev, self.root)
-        cfg.add_edge(prev, exit)
+        cfg.add_edge(prev, exit_node)
         return cfg
 
     def _visit(self, cfg: CFG, prev: Node, block: CodeElement) -> Node:
@@ -105,9 +111,7 @@ class CFGBuilder:
         elif isinstance(block, Comment):
             return prev
         elif isinstance(block, Dependency):
-            #TODO what to do here? see tests/design/puppet/files/duplicate_block.pp
-            print("Dependency encountered in CFG construction, skipping.")
-            return prev
+            return self._resolve_dependency(cfg, prev, block)
         # elif isinstance(block, Variable):
         #     return self._visit_variable(cfg, prev, block)
         # elif isinstance(block, VariableReference):
@@ -159,6 +163,49 @@ class CFGBuilder:
         for stmt in statements:
             current = self._visit(cfg, current, stmt)
 
+        return current
+
+    def _resolve_dependency(self, cfg: CFG, prev: Node, dep: Dependency) -> Node:
+        #TODO
+        return prev
+        if self.parser is None:
+            return prev
+        
+        current = prev
+        print(dep.names, "***************")
+        for dep_name in dep.names:
+            # Resolve the dependency file path
+            if not self.root.path:
+                continue
+
+                
+            base_dir = os.path.dirname(os.path.abspath(self.root.path))
+            dep_path = os.path.join(base_dir, dep_name)
+            
+            # Check if already visited or doesn't exist
+            abs_dep_path = os.path.abspath(dep_path)
+            if abs_dep_path in self.visited_files or not os.path.exists(dep_path):
+                continue
+            
+            # Mark as visited
+            self.visited_files.add(abs_dep_path)
+            
+            try:
+                # Parse the dependency file
+                dep_unit = self.parser.parse_file(dep_path, UnitBlockType.unknown)
+                print(dep_unit, "===================")
+                
+                if dep_unit is None:
+                    continue
+                # Traverse the entire dependency unit block to find all variables
+                # This respects lexical scoping and finds nested variables
+                current = self._visit(cfg, current, dep_unit)
+                    
+            except Exception as e:
+                # Log error but continue processing
+                print(f"Warning: Failed to process dependency {dep_path}: {e}")
+                continue
+        
         return current
 
     def _visit_unitblock(self, cfg: CFG, prev: Node, block: UnitBlock) -> Node:
@@ -237,23 +284,49 @@ class CFGBuilder:
         if isinstance(value, (String, Integer, Complex, Float, Boolean, Null)):
             pass  # literals do not create CFG nodes
 
-    elif isinstance(value, VariableReference):
-        return self._visit_varref(cfg, current, value)
+        elif isinstance(value, VariableReference):
+            return self._visit_varref(cfg, current, value)
 
-    elif isinstance(value, Hash):
-        for key, val in value.value.items():
-            current = self._visit_expression(cfg, current, key)
-            current = self._visit_expression(cfg, current, val)
+        elif isinstance(value, Hash):
+            for key, val in value.value.items():
+                current = self._visit_expression(cfg, current, key)
+                current = self._visit_expression(cfg, current, val)
 
-    elif isinstance(value, Array):
-        for item in value.value:
-            current = self._visit_expression(cfg, current, item)
+        elif isinstance(value, Array):
+            for item in value.value:
+                current = self._visit_expression(cfg, current, item)
 
-    elif isinstance(value, AddArgs):
-        for arg in value.value:
-            current = self._visit_expression(cfg, current, arg)
+        elif isinstance(value, AddArgs):
+            for arg in value.value:
+                current = self._visit_expression(cfg, current, arg)
 
-    else:
-        raise NotImplementedError(f"Unhandled expression type: {type(value)}")
+        else:
+            raise NotImplementedError(f"Unhandled expression type: {type(value)}")
 
-    return current
+        return current
+
+    def _visit_expression(self, cfg: CFG, prev: Node, expr: Expr) -> Node:
+        current = prev
+        if isinstance(expr, Value):
+            current = self._visit_value(cfg, current, expr)
+
+        elif isinstance(expr, BinaryOperation):
+            current = self._visit_expression(cfg, current, expr.left)
+            current = self._visit_expression(cfg, current, expr.right)
+
+        elif isinstance(expr, UnaryOperation):
+            current = self._visit_expression(cfg, current, expr.expr)
+
+        elif isinstance(expr, (FunctionCall, MethodCall)):
+            for arg in expr.args:
+                current = self._visit_expression(cfg, current, arg)
+            if isinstance(expr, MethodCall):
+                current = self._visit_expression(cfg, current, expr.receiver)
+        elif isinstance(expr, ConditionalStatement):
+            current = self._visit_conditional(cfg, current, expr)
+        else:
+            raise NotImplementedError(f"Unhandled expression type: {type(expr)}")
+
+        return current
+
+    

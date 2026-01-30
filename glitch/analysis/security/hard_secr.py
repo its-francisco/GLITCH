@@ -38,11 +38,22 @@ class HardcodedSecret(SecuritySmellChecker):
                 if not var_checker.check(value) or (
                     isinstance(value, VariableReference) and isinstance(value.literal_annotation, (Literal, Conflicting, Mixed))
                 ):
-                    if (
-                        item in SecurityVisitor.PASSWORDS
-                        and isinstance(value, String)
-                        and len(value.value) == 0
-                    ):
+                    is_empty = False
+                    if item in SecurityVisitor.PASSWORDS:
+                        if isinstance(value, String) and len(value.value) == 0:
+                            is_empty = True
+                        elif isinstance(value, VariableReference):
+                            ann = getattr(value, "literal_annotation", None)
+                            if isinstance(ann, Literal) and isinstance(ann.value, String):
+                                if len(ann.value.value) == 0:
+                                    is_empty = True
+                            elif isinstance(ann, (Conflicting, Mixed)):
+                                for v in ann.values:
+                                    if isinstance(v, String) and len(v.value) == 0:
+                                        is_empty = True
+                                        break
+                    
+                    if is_empty:
                         errors.append(
                             Error("sec_empty_pass", element, file, repr(element))
                         )
@@ -63,7 +74,23 @@ class HardcodedSecret(SecuritySmellChecker):
         for item in SecurityVisitor.SSH_DIR:
             ssh_dir_checker = StringChecker(lambda s: item.lower() in s)
             if ssh_dir_checker.check(name):
+                has_id_rsa = False
+                
                 if id_rsa_checker.check(value):
+                    has_id_rsa = True
+                    
+                elif isinstance(value, VariableReference):
+                    ann = getattr(value, "literal_annotation", None)
+                    if isinstance(ann, Literal) and isinstance(ann.value, String):
+                        if len(ann.value.value) > 0 and "/id_rsa" in ann.value.value:
+                            has_id_rsa = True
+                    elif isinstance(ann, (Conflicting, Mixed)):
+                        for v in ann.values:
+                            if isinstance(v, String) and len(v.value) > 0 and "/id_rsa" in v.value:
+                                has_id_rsa = True
+                                break
+                
+                if has_id_rsa:
                     errors.append(Error("sec_hard_secr", element, file, repr(element)))
 
         return errors
