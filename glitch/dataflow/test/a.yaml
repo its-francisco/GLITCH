@@ -1,21 +1,49 @@
 ---
-- name: Configure system
-  hosts: servers
-  vars:
-    # Outer scope - NOT hardcoded (safe)
-    a: "{{ lookup('env', 'DATABASE_PASSWORD') }}"
-  
+# the first playbook for lesson 2
+
+- hosts: all
+  name: Set up the basic users
+  sudo: true
+  vars_files:
+    - lesson1_vars.yml
+    - users.yml
   tasks:
-    - name: Some task with inner scope
-      debug:
-        msg: "Setting up..."
-      vars:
-        # Inner scope - HARDCODED secret (dangerous)
-        a: "HardcodedSecret999!"
-    
-    - name: Create database user
-      postgresql_user:
-        name: admin
-        # Uses outer scope db_pass - which one is it?
-        password: "{{ a }}"
+# We will create a set of users and respective passwords
+# see http://docs.ansible.com/ansible/playbooks_loops.html
+  - name: ensure that users are present
+    user:
+      name: "{{ item.name }}"
+      password: "{{ item.password }}"
+      home: "/bin/bash/{{ item.name }}"
+    with_items: users
+
+- hosts: all
+  #accelerate: true
+# this should include the additon of EPEL
+  name: ensure system is properly configured
+  sudo: true
+  vars_files:
+    - lesson1_vars.yml
+  tasks:
+    - name: ensure that ntp is installed
+      yum:
+        name: "{{ item }}"
         state: present
+      with_items: packages
+    - name: push the template for ntp.conf
+      template:
+        src: ntp.conf.j2
+        dest: /etc/ntp.conf
+    - name: ensure that ntp is started
+      service:
+        name: ntpd
+        state: started
+
+
+# Now, we have to test that the machines are actually properly configured.
+- hosts: all
+  #accelerate: true
+  name: Testing
+  tasks:
+  - debug:
+      msg: "No tests yet"

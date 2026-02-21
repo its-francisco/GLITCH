@@ -1,0 +1,486 @@
+{
+  "ir_type": "UnitBlock",
+  "line": -33550336,
+  "column": -33550336,
+  "end_line": -33550336,
+  "end_column": -33550336,
+  "code": "",
+  "statements": [],
+  "dependencies": [
+    {
+      "ir_type": "Dependency",
+      "line": 4,
+      "column": -33550336,
+      "end_line": -33550336,
+      "end_column": -33550336,
+      "code": "- include: cloudformation_setup.yml\n",
+      "names": "cloudformation_setup.yml"
+    },
+    {
+      "ir_type": "Dependency",
+      "line": 5,
+      "column": -33550336,
+      "end_line": -33550336,
+      "end_column": -33550336,
+      "code": "- include: group_setup.yml\n",
+      "names": "group_setup.yml"
+    }
+  ],
+  "comments": [
+    {
+      "ir_type": "Comment",
+      "line": 19,
+      "column": -33550336,
+      "end_line": -33550336,
+      "end_column": -33550336,
+      "code": "# run the actual commands only on one of the masters\n",
+      "content": "# run the actual commands only on one of the masters"
+    },
+    {
+      "ir_type": "Comment",
+      "line": 7,
+      "column": -33550336,
+      "end_line": -33550336,
+      "end_column": -33550336,
+      "code": "# Smoke projects\n",
+      "content": "# Smoke projects"
+    },
+    {
+      "ir_type": "Comment",
+      "line": 1,
+      "column": -33550336,
+      "end_line": -33550336,
+      "end_column": -33550336,
+      "code": "# vim: set ft=ansible:\n",
+      "content": "# vim: set ft=ansible:"
+    },
+    {
+      "ir_type": "Comment",
+      "line": 8,
+      "column": -33550336,
+      "end_line": -33550336,
+      "end_column": -33550336,
+      "code": "# need to create the users on all of the masters since we are using \"local\" auth\n",
+      "content": "# need to create the users on all of the masters since we are using \"local\" auth"
+    },
+    {
+      "ir_type": "Comment",
+      "line": 3,
+      "column": -33550336,
+      "end_line": -33550336,
+      "end_column": -33550336,
+      "code": "# to get the storage volume info and set up groups in case this playbook is run by itself\n",
+      "content": "# to get the storage volume info and set up groups in case this playbook is run by itself"
+    }
+  ],
+  "variables": [],
+  "atomic_units": [
+    {
+      "ir_type": "AtomicUnit",
+      "line": 9,
+      "column": -33550336,
+      "end_line": -33550336,
+      "end_column": -33550336,
+      "code": "- name: Smoke users\n  vars_files:\n  - vars.yml\n  hosts: masters\n  tasks:\n",
+      "statements": [],
+      "name": {
+        "ir_type": "String",
+        "line": 9,
+        "column": 9,
+        "end_line": 9,
+        "end_column": 20,
+        "code": "Smoke users",
+        "value": "Smoke users"
+      },
+      "type": "vars_files",
+      "attributes": [
+        {
+          "ir_type": "Attribute",
+          "line": 10,
+          "column": 3,
+          "end_line": 12,
+          "end_column": 3,
+          "code": "  vars_files:\n  - vars.yml\n  ",
+          "name": "vars_files",
+          "value": {
+            "ir_type": "Array",
+            "line": 11,
+            "column": 3,
+            "end_line": 12,
+            "end_column": 3,
+            "code": "  - vars.yml\n  ",
+            "value": [
+              {
+                "ir_type": "String",
+                "line": 11,
+                "column": 5,
+                "end_line": 11,
+                "end_column": 13,
+                "code": "vars.yml",
+                "value": "vars.yml"
+              }
+            ]
+          }
+        },
+        {
+          "ir_type": "Attribute",
+          "line": 12,
+          "column": 3,
+          "end_line": 12,
+          "end_column": 17,
+          "code": "hosts: masters",
+          "name": "hosts",
+          "value": {
+            "ir_type": "String",
+            "line": 12,
+            "column": 10,
+            "end_line": 12,
+            "end_column": 17,
+            "code": "masters",
+            "value": "masters"
+          }
+        },
+        {
+          "ir_type": "Attribute",
+          "line": 13,
+          "column": 3,
+          "end_line": 20,
+          "end_column": 1,
+          "code": "  tasks:\n  - name: Create the users\n    command: \"htpasswd -b /etc/origin/master/htpasswd {{ item }} {{ default_password }}\"\n    with_sequence: start=0 end={{ num_smoke_test_users }} format=user%02d\n    when: run_smoke_tests | bool or run_only_smoke_tests | bool\n\n# run the actual commands only on one of the masters\n",
+          "name": "tasks",
+          "value": {
+            "ir_type": "Array",
+            "line": 14,
+            "column": 3,
+            "end_line": 20,
+            "end_column": 1,
+            "code": "  - name: Create the users\n    command: \"htpasswd -b /etc/origin/master/htpasswd {{ item }} {{ default_password }}\"\n    with_sequence: start=0 end={{ num_smoke_test_users }} format=user%02d\n    when: run_smoke_tests | bool or run_only_smoke_tests | bool\n\n# run the actual commands only on one of the masters\n",
+            "value": [
+              {
+                "ir_type": "Hash",
+                "line": 14,
+                "column": 5,
+                "end_line": 20,
+                "end_column": 1,
+                "code": "  - name: Create the users\n    command: \"htpasswd -b /etc/origin/master/htpasswd {{ item }} {{ default_password }}\"\n    with_sequence: start=0 end={{ num_smoke_test_users }} format=user%02d\n    when: run_smoke_tests | bool or run_only_smoke_tests | bool\n\n# run the actual commands only on one of the masters\n",
+                "value": [
+                  {
+                    "key": {
+                      "ir_type": "String",
+                      "line": 14,
+                      "column": 5,
+                      "end_line": 14,
+                      "end_column": 9,
+                      "code": "name",
+                      "value": "name"
+                    },
+                    "value": {
+                      "ir_type": "String",
+                      "line": 14,
+                      "column": 11,
+                      "end_line": 14,
+                      "end_column": 27,
+                      "code": "Create the users",
+                      "value": "Create the users"
+                    }
+                  },
+                  {
+                    "key": {
+                      "ir_type": "String",
+                      "line": 15,
+                      "column": 5,
+                      "end_line": 15,
+                      "end_column": 12,
+                      "code": "command",
+                      "value": "command"
+                    },
+                    "value": {
+                      "ir_type": "Sum",
+                      "line": 15,
+                      "column": 14,
+                      "end_line": 15,
+                      "end_column": 89,
+                      "code": "\"htpasswd -b /etc/origin/master/htpasswd {{ item }} {{ default_password }}\"",
+                      "left": {
+                        "ir_type": "Sum",
+                        "line": 15,
+                        "column": 14,
+                        "end_line": 15,
+                        "end_column": 89,
+                        "code": "\"htpasswd -b /etc/origin/master/htpasswd {{ item }} {{ default_password }}\"",
+                        "left": {
+                          "ir_type": "Sum",
+                          "line": 15,
+                          "column": 14,
+                          "end_line": 15,
+                          "end_column": 89,
+                          "code": "\"htpasswd -b /etc/origin/master/htpasswd {{ item }} {{ default_password }}\"",
+                          "left": {
+                            "ir_type": "String",
+                            "line": 15,
+                            "column": 15,
+                            "end_line": 15,
+                            "end_column": 55,
+                            "code": "\"htpasswd -b /etc/origin/master/htpasswd ",
+                            "value": "htpasswd -b /etc/origin/master/htpasswd "
+                          },
+                          "right": {
+                            "ir_type": "VariableReference",
+                            "line": 15,
+                            "column": 58,
+                            "end_line": 15,
+                            "end_column": 62,
+                            "code": "item }} {{ default_password }}\"",
+                            "value": "item"
+                          },
+                          "type": "sum"
+                        },
+                        "right": {
+                          "ir_type": "String",
+                          "line": 15,
+                          "column": 65,
+                          "end_line": 15,
+                          "end_column": 66,
+                          "code": " {{ default_password }}\"",
+                          "value": " "
+                        },
+                        "type": "sum"
+                      },
+                      "right": {
+                        "ir_type": "VariableReference",
+                        "line": 15,
+                        "column": 69,
+                        "end_line": 15,
+                        "end_column": 85,
+                        "code": "default_password }}\"",
+                        "value": "default_password"
+                      },
+                      "type": "sum"
+                    }
+                  },
+                  {
+                    "key": {
+                      "ir_type": "String",
+                      "line": 16,
+                      "column": 5,
+                      "end_line": 16,
+                      "end_column": 18,
+                      "code": "with_sequence",
+                      "value": "with_sequence"
+                    },
+                    "value": {
+                      "ir_type": "Sum",
+                      "line": 16,
+                      "column": 20,
+                      "end_line": 16,
+                      "end_column": 74,
+                      "code": "start=0 end={{ num_smoke_test_users }} format=user%02d",
+                      "left": {
+                        "ir_type": "Sum",
+                        "line": 16,
+                        "column": 20,
+                        "end_line": 16,
+                        "end_column": 74,
+                        "code": "start=0 end={{ num_smoke_test_users }} format=user%02d",
+                        "left": {
+                          "ir_type": "String",
+                          "line": 16,
+                          "column": 20,
+                          "end_line": 16,
+                          "end_column": 32,
+                          "code": "start=0 end=",
+                          "value": "start=0 end="
+                        },
+                        "right": {
+                          "ir_type": "VariableReference",
+                          "line": 16,
+                          "column": 35,
+                          "end_line": 16,
+                          "end_column": 55,
+                          "code": "num_smoke_test_users }} format=user",
+                          "value": "num_smoke_test_users"
+                        },
+                        "type": "sum"
+                      },
+                      "right": {
+                        "ir_type": "String",
+                        "line": 16,
+                        "column": 58,
+                        "end_line": 16,
+                        "end_column": 74,
+                        "code": " format=user%02d",
+                        "value": " format=user%02d"
+                      },
+                      "type": "sum"
+                    }
+                  },
+                  {
+                    "key": {
+                      "ir_type": "String",
+                      "line": 17,
+                      "column": 5,
+                      "end_line": 17,
+                      "end_column": 9,
+                      "code": "when",
+                      "value": "when"
+                    },
+                    "value": {
+                      "ir_type": "String",
+                      "line": 17,
+                      "column": 11,
+                      "end_line": 17,
+                      "end_column": 64,
+                      "code": "run_smoke_tests | bool or run_only_smoke_tests | bool",
+                      "value": "run_smoke_tests | bool or run_only_smoke_tests | bool"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "ir_type": "AtomicUnit",
+      "line": 20,
+      "column": -33550336,
+      "end_line": -33550336,
+      "end_column": -33550336,
+      "code": "- name: Smoke projects and apps\n  vars_files:\n  - vars.yml\n  hosts: project_master\n  tasks:\n",
+      "statements": [],
+      "name": {
+        "ir_type": "String",
+        "line": 20,
+        "column": 9,
+        "end_line": 20,
+        "end_column": 32,
+        "code": "Smoke projects and apps",
+        "value": "Smoke projects and apps"
+      },
+      "type": "vars_files",
+      "attributes": [
+        {
+          "ir_type": "Attribute",
+          "line": 21,
+          "column": 3,
+          "end_line": 23,
+          "end_column": 3,
+          "code": "  vars_files:\n  - vars.yml\n  ",
+          "name": "vars_files",
+          "value": {
+            "ir_type": "Array",
+            "line": 22,
+            "column": 3,
+            "end_line": 23,
+            "end_column": 3,
+            "code": "  - vars.yml\n  ",
+            "value": [
+              {
+                "ir_type": "String",
+                "line": 22,
+                "column": 5,
+                "end_line": 22,
+                "end_column": 13,
+                "code": "vars.yml",
+                "value": "vars.yml"
+              }
+            ]
+          }
+        },
+        {
+          "ir_type": "Attribute",
+          "line": 23,
+          "column": 3,
+          "end_line": 23,
+          "end_column": 24,
+          "code": "hosts: project_master",
+          "name": "hosts",
+          "value": {
+            "ir_type": "String",
+            "line": 23,
+            "column": 10,
+            "end_line": 23,
+            "end_column": 24,
+            "code": "project_master",
+            "value": "project_master"
+          }
+        },
+        {
+          "ir_type": "Attribute",
+          "line": 24,
+          "column": 3,
+          "end_line": 27,
+          "end_column": 1,
+          "code": "  tasks:\n  - include: tasks/smoke_projects.yml\n    when: run_smoke_tests | bool or run_only_smoke_tests | bool\n",
+          "name": "tasks",
+          "value": {
+            "ir_type": "Array",
+            "line": 25,
+            "column": 3,
+            "end_line": 27,
+            "end_column": 1,
+            "code": "  - include: tasks/smoke_projects.yml\n    when: run_smoke_tests | bool or run_only_smoke_tests | bool\n",
+            "value": [
+              {
+                "ir_type": "Hash",
+                "line": 25,
+                "column": 5,
+                "end_line": 27,
+                "end_column": 1,
+                "code": "  - include: tasks/smoke_projects.yml\n    when: run_smoke_tests | bool or run_only_smoke_tests | bool\n",
+                "value": [
+                  {
+                    "key": {
+                      "ir_type": "String",
+                      "line": 25,
+                      "column": 5,
+                      "end_line": 25,
+                      "end_column": 12,
+                      "code": "include",
+                      "value": "include"
+                    },
+                    "value": {
+                      "ir_type": "String",
+                      "line": 25,
+                      "column": 14,
+                      "end_line": 25,
+                      "end_column": 38,
+                      "code": "tasks/smoke_projects.yml",
+                      "value": "tasks/smoke_projects.yml"
+                    }
+                  },
+                  {
+                    "key": {
+                      "ir_type": "String",
+                      "line": 26,
+                      "column": 5,
+                      "end_line": 26,
+                      "end_column": 9,
+                      "code": "when",
+                      "value": "when"
+                    },
+                    "value": {
+                      "ir_type": "String",
+                      "line": 26,
+                      "column": 11,
+                      "end_line": 26,
+                      "end_column": 64,
+                      "code": "run_smoke_tests | bool or run_only_smoke_tests | bool",
+                      "value": "run_smoke_tests | bool or run_only_smoke_tests | bool"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "unit_blocks": [],
+  "attributes": [],
+  "name": "../oracles/data/repos/clones/2015-Middleware-Keynote/demo-ansible/playbooks/projects_setup.yml",
+  "path": "../oracles/data/repos/clones/2015-Middleware-Keynote/demo-ansible/playbooks/projects_setup.yml",
+  "type": "tasks"
+}

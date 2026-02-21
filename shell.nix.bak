@@ -1,0 +1,20 @@
+{ pkgs ? import <nixpkgs> {} }:
+
+pkgs.mkShell {
+  buildInputs = [
+    pkgs.ruby
+    # Required for ansible-playbook --syntax-check
+    pkgs.ansible
+    # Optional but highly recommended for validation
+    pkgs.ansible-lint
+  ];
+
+  shellHook = ''
+    if [ -f .venv/bin/activate ]; then
+      source .venv/bin/activate
+    fi
+    
+    echo "Ansible environment loaded."
+    ansible --version
+  '';
+}
