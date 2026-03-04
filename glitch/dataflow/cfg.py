@@ -84,11 +84,24 @@ class CFG:
         return f"CFG(Entry: {self.entry}, Exit: {self.exit}, Nodes: {list(self.nodes.values())})"
 
 class CFGBuilder:
-    def __init__(self, root: UnitBlock, parser: Optional[Parser] = None) -> None:
+
+    def __init__(
+        self,
+        root: UnitBlock,
+        parser: Optional[Parser] = None,
+        dependency_attribute_names: Optional[Set[str]] = None,
+    ) -> None:
         self.root: UnitBlock = root
         self.scope_manager: ScopeManager = ScopeManager()
         self.parser: Optional[Parser] = parser
         self.visited_files: Set[str] = set()
+        parser_names: Set[str] = parser.get_file_reference_keywords() if parser is not None else set()
+        configured_names: Set[str] = parser_names | set()
+        if dependency_attribute_names is not None:
+            configured_names |= dependency_attribute_names
+        self.dependency_attribute_names: Set[str] = {
+            name.lower() for name in configured_names
+        }
         if root.path:
             self.visited_files.add(os.path.abspath(root.path))
 
@@ -142,10 +155,19 @@ class CFGBuilder:
             raise NotImplementedError(f"Unhandled KeyValue type: {type(kv)}")
 
     def _visit_attribute(self, cfg: CFG, prev: Node, attr: Attribute) -> Node:
-        return self._visit_expression(cfg, prev, attr.value)
+        current = prev
+
+        if attr.name.lower() in self.dependency_attribute_names:
+            current = self._resolve_dependency_attribute(cfg, current, attr)
+
+        return self._visit_expression(cfg, current, attr.value)
 
     def _visit_atomicunit(self, cfg: CFG, prev: Node, atomic_unit: AtomicUnit) -> Node:
         current = prev
+
+        if atomic_unit.type.lower() in self.dependency_attribute_names:
+            for attr in atomic_unit.attributes:
+                current = self._resolve_dependency_attribute(cfg, current, attr)
 
         all_elements = sorted(
             atomic_unit.statements + atomic_unit.attributes + [atomic_unit.name],
@@ -166,46 +188,92 @@ class CFGBuilder:
         return current
 
     def _resolve_dependency(self, cfg: CFG, prev: Node, dep: Dependency) -> Node:
-        #TODO
-        return prev
+        current = prev
         if self.parser is None:
             return prev
-        
-        current = prev
-        print(dep.names, "***************")
-        for dep_name in dep.names:
-            # Resolve the dependency file path
-            if not self.root.path:
-                continue
 
-                
-            base_dir = os.path.dirname(os.path.abspath(self.root.path))
-            dep_path = os.path.join(base_dir, dep_name)
-            
-            # Check if already visited or doesn't exist
-            abs_dep_path = os.path.abspath(dep_path)
-            if abs_dep_path in self.visited_files or not os.path.exists(dep_path):
-                continue
-            
-            # Mark as visited
-            self.visited_files.add(abs_dep_path)
-            
-            try:
-                # Parse the dependency file
-                dep_unit = self.parser.parse_file(dep_path, UnitBlockType.unknown)
-                print(dep_unit, "===================")
-                
-                if dep_unit is None:
-                    continue
-                # Traverse the entire dependency unit block to find all variables
-                # This respects lexical scoping and finds nested variables
-                current = self._visit(cfg, current, dep_unit)
-                    
-            except Exception as e:
-                # Log error but continue processing
-                print(f"Warning: Failed to process dependency {dep_path}: {e}")
-                continue
+        for dep_name in dep.names:
+            current = self._resolve_and_visit_path(cfg, current, dep_name)
         
+        return current
+
+    def _resolve_dependency_attribute(self, cfg: CFG, prev: Node, attr: Attribute) -> Node:
+        current = prev
+
+        for dep_name in self._extract_dependency_paths(attr.value, attr.name):
+            current = self._resolve_and_visit_path(cfg, current, dep_name)
+
+        return current
+
+    def _extract_dependency_paths(self, expr: Expr, attr_name: str = "") -> List[str]:
+        if isinstance(expr, String):
+            return [expr.value]
+
+        if isinstance(expr, Array):
+            values: List[str] = []
+            for item in expr.value:
+                if isinstance(item, String):
+                    values.append(item.value)
+            return values
+
+        # TODO this section needs an abstraction
+        if isinstance(expr, Hash):
+            values: List[str] = []
+            file_keys = {"file", "name", "dir"}
+            if attr_name.lower() in {"include_tasks", "import_tasks", "import_playbook"}:
+                file_keys = {"file"}
+            for key, val in expr.value.items():
+                key_value = key.value.lower() if isinstance(key, String) else ""
+                if key_value in file_keys and isinstance(val, String):
+                    values.append(val.value)
+            return values
+
+        return []
+
+    def _resolve_and_visit_path(self, cfg: CFG, prev: Node, dep_name: str) -> Node:
+        if self.parser is None or not self.root.path:
+            return prev
+
+        dep_name = dep_name.strip()
+        if not dep_name:
+            return prev
+
+        base_dir = os.path.dirname(os.path.abspath(self.root.path))
+        dep_path = dep_name if os.path.isabs(dep_name) else os.path.join(base_dir, dep_name)
+        abs_dep_path = os.path.abspath(dep_path)
+
+        if abs_dep_path in self.visited_files or not os.path.exists(abs_dep_path):
+            return prev
+
+        self.visited_files.add(abs_dep_path)
+
+        try:
+            dep_unit = self.parser.parse_file(abs_dep_path, UnitBlockType.unknown)
+            if dep_unit is None:
+                return prev
+            if dep_unit.type == UnitBlockType.vars:
+                return self._visit_unitblock_inline(cfg, prev, dep_unit)
+            return self._visit(cfg, prev, dep_unit)
+        except Exception:
+            return prev
+
+    def _visit_unitblock_inline(self, cfg: CFG, prev: Node, block: UnitBlock) -> Node:
+        current = prev
+
+        all_elements = sorted(
+            block.statements
+            + block.atomic_units
+            + block.dependencies
+            + block.unit_blocks
+            + block.variables
+            + block.comments
+            + block.attributes,
+            key=lambda x: x.line,
+        )
+
+        for elem in all_elements:
+            current = self._visit(cfg, current, elem)
+
         return current
 
     def _visit_unitblock(self, cfg: CFG, prev: Node, block: UnitBlock) -> Node:

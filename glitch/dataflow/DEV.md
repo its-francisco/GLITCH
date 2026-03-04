@@ -21,3 +21,11 @@ dependencies:
     }
 
 need to resolve them first to find variable declarations and add them to the cfg
+
+keep a list of attributes that will include other files (ex.var_files)
+
+vmware/deploy.yml includes vars.yml, and has the secret pw: "{{ new_vm_passwd }}"
+
+
+python -m glitch lint --tech ansible --dataflow glitch/dataflow/dependencyResolution/vmware/deploy.yml 
+python -m glitch cfg --tech ansible --dump --dataflow glitch/dataflow/dependencyResolution/vmware/deploy.yml # outputs the repr, for debugging

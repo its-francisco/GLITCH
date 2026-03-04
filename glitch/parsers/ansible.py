@@ -1,7 +1,7 @@
 import os
 
 from glitch.parsers.yaml import YamlParser
-from typing import List, TextIO, Any, Optional, Callable
+from typing import List, TextIO, Any, Optional, Callable, Set
 from ruamel.yaml.main import YAML
 from ruamel.yaml.nodes import (
     Node,
@@ -14,6 +14,16 @@ from glitch.repr.inter import *
 
 
 class AnsibleParser(YamlParser):
+    __FILE_REFERENCE_KEYWORDS = {
+        "vars_file",
+        "vars_files",
+        "include_vars",
+        "import_vars",
+        "include_tasks",
+        "import_tasks",
+        "import_playbook",
+    }
+
     __TASK_PARAMS = [
         "ansible.builtin.include",
         "any_errors_fatal",
@@ -71,6 +81,9 @@ class AnsibleParser(YamlParser):
 
     def __init__(self) -> None:
         super().__init__()
+
+    def get_file_reference_keywords(self) -> Set[str]:
+        return set(AnsibleParser.__FILE_REFERENCE_KEYWORDS)
 
     def __create_variable(
         self,
@@ -147,7 +160,8 @@ class AnsibleParser(YamlParser):
                 # Dependencies
                 # FIXME include roles
                 if key.value == "include":
-                    d = Dependency(val.value)
+                    dep_names = val.value if isinstance(val.value, list) else [val.value]
+                    d = Dependency(dep_names)
                     d.line = key.start_mark.line + 1
                     d.code = "".join(code[key.start_mark.line : val.end_mark.line + 1])
                     unit_block.add_dependency(d)

@@ -1,7 +1,7 @@
 import os
 from glitch.repr.inter import *
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Set
 
 from glitch.repr.inter import UnitBlockType
 
@@ -39,3 +39,6 @@ class Parser(ABC):
                 new_folder = Folder(f)
                 self.parse_file_structure(new_folder, os.path.join(path, f))
                 folder.add_folder(new_folder)
+
+    def get_file_reference_keywords(self) -> Set[str]:
+        return set()
