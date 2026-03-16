@@ -98,9 +98,40 @@ Dataflow annotation is executed in CLI flow ([glitch/__main__.py](glitch/__main_
 To simplify testing, a helper ([glitch/tests/dataflow/ir_builder.py](glitch/tests/dataflow/ir_builder.py)) was added to build IR objects from JSON serialization, keeping these tests isolated from parser behavior.
 
 ## Evaluation
-made use of the anotated datasets in glitch-llm repository. Only puppet in the - dataset showed difference with the following false positives:
 
-An evaluation was made, leveraging the annotated datasets from the glitch-llm repository. Only the Puppet subset of the dataset exhibited differences, where a small number of additional false positives were observed. 
+An evaluation was made, leveraging the annotated datasets from the glitch-llm repository. Only the Puppet dataset (in code/datasets/puppet) exhibited differences, where a small number of additional false positives were observed. 
+
+
+(hyperlinks will not work. They are relative to the root glitch-llm repository)
+
+[puphpet@puppet-puphpet-manifests-nginx-params.pp](code/datasets/puppet/puphpet@puppet-puphpet-manifests-nginx-params.pp)
+```
+    'www_root'             => $webroot_location,
+```
+
+[SecGen@SecGen-modules-utilities-unix-firewall-firewall-manifests-linux-redhat.pp](code/datasets/puppet/SecGen@SecGen-modules-utilities-unix-firewall-firewall-manifests-linux-redhat.pp)
+```
+      case $::selinux {
+    #lint:ignore:quoted_booleans
+    'true',true: {
+      case $::operatingsystemrelease {
+        /^(6|7)\..*/: { $seluser = 'unconfined_u' }
+        default: { $seluser = 'system_u' }
+      }
+    }
+    #lint:endignore
+    default:     { $seluser = undef }
+  }
+
+  file { "/etc/sysconfig/${service_name}":
+    ensure  => present,
+    owner   => 'root',
+    group   => 'root',
+    mode    => '0600',
+    seluser => $seluser,
+  }
+```
+which are not positive, even though they exhibit "root" and "user" in the attribute name.
 
 ## Validation Process
 
