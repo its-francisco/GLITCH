@@ -66,7 +66,7 @@ After this change, security checkers inspect `literal_annotation` on references 
 
 ## Analysis pipeline integration
 
-Dataflow annotation is executed in CLI flow ([glitch/__main__.py](glitch/__main__.py)) via `annotate_ir(...)` defined in [glitch/dataflow/analysis.py](glitch/dataflow/analysis.py), before running rule visitors, for `UnitBlock`, `Module`, and `Project` IR shapes. It is opt-in: the `--dataflow` flag (default `False`) must be set to enable it.
+Dataflow annotation is executed in CLI flow ([glitch/__main__.py](glitch/__main__.py)) via `annotate_ir(...)` defined in [glitch/dataflow/analysis.py](glitch/dataflow/analysis.py), before running rule visitors. It is opt-in: the `--dataflow` flag (default `False`) must be set to enable it.
 
 ## Tests added/extended ([glitch/tests/dataflow](glitch/tests/dataflow))
 
@@ -81,13 +81,23 @@ Dataflow annotation is executed in CLI flow ([glitch/__main__.py](glitch/__main_
 - parsing/visiting of included/imported files (`include_vars`, `include_tasks`, `import_tasks`, `import_playbook`),
 - correct traversal bookkeeping (`visited_files`).
 
-## Next steps (WIP)
+## Evaluation
+made use of the anotated datasets in glitch-llm repository. Only puppet in the - dataset showed difference with the following false positives:
 
-Dependency-aware traversal in `CFGBuilder` is still WIP. Current logic resolves and visits several dependency patterns and prevents cycles with `visited_files`, but it still needs hardening and broader coverage.
+An evaluation was made, leveraging the annotated datasets from the glitch-llm repository. Only the Puppet subset of the dataset exhibited differences, where a small number of additional false positives were observed. 
 
-Planned follow-up:
+## Validation Process
+
+Validation was aided by Ruben Opdebeeck's replication package for the paper ["Control and Data Flow in Security Smell Detection for Infrastructure as Code: Is It Worth the Effort?"](https://doi.org/10.6084/m9.figshare.21929856). This made it possible to:
+
+- Analyze some cases where GASEL detected a security smell but GLITCH did not, to identify potential improvements or missed detections.
+- Investigate some cases where both tools detected a smell, with particular attention to findings involving variable indirection (indirection > 0), to validate the correctness of the dataflow extension.
+- Review some instances where GLITCH detected a smell but GASEL did not to confirm if these were false positives.
+
+## Next steps
+
+Dependency-aware traversal in `CFGBuilder` is still WIP. Current logic resolves and visits several dependency patterns and prevents cycles with `visited_files`, but its coverage is limited to some ansible.
+
 - expand dependency path extraction/normalization across more provider-specific shapes,
-- tighten error handling/reporting for unresolved or invalid includes,
-- add configuration input for lexical scoping rules (so scope resolution policy is not hardcoded), including advanced language-specific scoping constructs beyond stack-based lexical lookup.
-- formalize cross-file scope/value semantics for imported content,
+- add configuration input for lexical scoping rules (so scope resolution policy is not hardcoded), including language-specific scoping constructs beyond stack-based lexical lookup.
 - extend tests for edge cases (relative paths, duplicate imports, recursive include graphs).

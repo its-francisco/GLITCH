@@ -1,8 +1,0 @@
-- hosts: localhost
-  vars:
-    a_var: sekrit
-  tasks:
-    - name: test
-      user:
-        name: me
-        password: '{{ a_var }}'
