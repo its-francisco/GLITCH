@@ -43,11 +43,31 @@ Variable definitions and uses are topologically connected according to control f
 Forward worklist dataflow that computes `IN/OUT` state per CFG node.
 
 Per-variable abstract state comes from `glitch/dataflow/literal_value.py`:
-- `Unknown`: no information yet.
-- `Literal(v)`: single known literal.
-- `Conflicting(S)`: multiple possible literals depending on path.
-- `Mixed(S)`: literal on some paths, non-literal on others.
-- `NonLiteral`: not literal.
+```
+Lattice (per variable):
+
+    T (Unknown)       → initial state (no information yet)
+    Literal(v)        → variable is exactly literal v
+    Conflicting(S)    → variable is literal, but with multiple distinct
+                        literal values depending on path
+    Mixed(S)          → variable is literal on some paths (values S), but
+                        non-literal on others
+    NonLiteral        → variable is never a literal
+
+Ordering: T ≥ Literal(v), Conflicting(S), Mixed(S) ≥ NonLiteral
+
+Meet:
+  - Literal(v) ⊓ Literal(v) = Literal(v)
+  - Literal(v1) ⊓ Literal(v2≠v1) = Conflicting({v1,v2})
+  - Conflicting(S1) ⊓ Conflicting(S2) = Conflicting(S1 U S2)
+  - Literal(v) ⊓ Conflicting(S) = Conflicting(S U {v})
+  - Literal(v) ⊓ NonLiteral = Mixed({v})
+  - Conflicting(S) ⊓ NonLiteral = Mixed(S)
+  - Mixed(S1) ⊓ Mixed(S2) = Mixed(S1 U S2)
+  - Mixed(S) ⊓ Literal(v) = Mixed(S U {v})
+  - Mixed(S) ⊓ Conflicting(T) = Mixed(S U T)
+  - Any ⊓ T = Any
+```
 
 The introduction of `Conflicting` and `Mixed` cases is not strictly necessary for the current use case. It was done for semantics completeness.
 
