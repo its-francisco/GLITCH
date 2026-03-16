@@ -1,9 +1,21 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 from functools import reduce
 from dataclasses import dataclass
 
-from glitch.repr.inter import Expr, VariableReference, String, Integer, Float, Boolean, Null
-from glitch.dataflow.cfg import CFG, Node, VarNode, VarRefNode
+from glitch.repr.inter import (
+    Expr,
+    VariableReference,
+    String,
+    Integer,
+    Float,
+    Boolean,
+    Null,
+    UnitBlock,
+    Module,
+    Project,
+)
+from glitch.parsers.parser import Parser
+from glitch.dataflow.cfg import CFG, Node, VarNode, VarRefNode, CFGBuilder
 from glitch.dataflow.literal_value import AbstractValue, Unknown, Literal, NonLiteral, meet
 
 """
@@ -143,3 +155,31 @@ class LiteralAnalysis:
 
 def analyze_cfg_literals(cfg: CFG) -> None:
     LiteralAnalysis.analyze(cfg)
+
+
+def annotate_ir(inter: object, dataflow: bool, parser: Optional[Parser] = None) -> None:
+    """Build CFG(s) for the given IR and run literal analysis, annotating the IR in-place.
+
+    Each VariableReference in the IR gets a `literal_annotation` set to its
+    abstract value. Handles UnitBlock, Module, and Project. No-ops when
+    dataflow is False or inter is None.
+    """
+    if not dataflow or inter is None:
+        return
+
+    if isinstance(inter, UnitBlock):
+        cfg = CFGBuilder(inter, parser).build()
+        analyze_cfg_literals(cfg)
+        return
+
+    if isinstance(inter, Module):
+        for block in inter.blocks:
+            cfg = CFGBuilder(block, parser).build()
+            analyze_cfg_literals(cfg)
+        return
+
+    if isinstance(inter, Project):
+        for module in inter.modules:
+            for block in module.blocks:
+                cfg = CFGBuilder(block, parser).build()
+                analyze_cfg_literals(cfg)

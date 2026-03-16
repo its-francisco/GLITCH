@@ -1,6 +1,6 @@
-from platform import node
 from typing import Any, Dict
 import unittest
+from importlib.resources import files
 
 from glitch.repr.inter import UnitBlock, VariableReference
 from glitch.dataflow.cfg import CFGBuilder
@@ -13,18 +13,19 @@ from glitch.analysis.security.visitor import SecurityVisitor
 
 import json
 
+
 class TestIRJsonLintingDataflow(unittest.TestCase):
-    def __help_test(self, inter, n_errors: int, codes, lines) -> None:
-        analysis = SecurityVisitor(Tech.ansible)
-        analysis.config("configs/default.ini")
-        errors = list(
-            filter(lambda e: e.code.startswith("sec_"), set(analysis.check(inter)))
-        )
-        errors = sorted(errors, key=lambda e: (e.path, e.line, e.code))
-        self.assertEqual(len(errors), n_errors)
-        for i in range(n_errors):
-            self.assertEqual(errors[i].code, codes[i])
-            self.assertEqual(errors[i].line, lines[i])
+  def __help_test(self, inter, n_errors: int, codes, lines) -> None:
+    analysis = SecurityVisitor(Tech.ansible)
+    analysis.config(str(files("glitch") / "configs/default.ini"))
+    errors = list(
+      filter(lambda e: e.code.startswith("sec_"), set(analysis.check(inter)))
+    )
+    errors = sorted(errors, key=lambda e: (e.path, e.line, e.code))
+    self.assertEqual(len(errors), n_errors)
+    for i in range(n_errors):
+      self.assertEqual(errors[i].code, codes[i])
+      self.assertEqual(errors[i].line, lines[i])
 
 
     def __contains_annotation(self, jsonRepr: Any, var_name: str, var_value: str) -> bool:

@@ -6,10 +6,8 @@ class ScopeManager:
         self.scope_stack: List[Dict] = []
         self.current_scope_id = 0
         self.unique_scope_ids = set([0])
-        self.parent_scope_id = -1
 
     def enter_scope(self, unit: CodeElement):
-        self.parent_scope_id = self.current_scope_id
         while self.current_scope_id in self.unique_scope_ids:
             self.current_scope_id += 1
         self.unique_scope_ids.add(self.current_scope_id)
@@ -23,8 +21,9 @@ class ScopeManager:
         return new_scope
 
     def exit_scope(self):
-        self.current_scope_id = self.parent_scope_id
-        return self.scope_stack.pop()
+        popped = self.scope_stack.pop()
+        self.current_scope_id = self.scope_stack[-1]['id'] if self.scope_stack else 0
+        return popped
 
     def declare_variable(self, var: Variable):
         """Declare a variable in current scope"""

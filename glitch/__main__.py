@@ -11,7 +11,7 @@ from glitch.parsers.docker import DockerParser
 from glitch.stats.print import print_stats
 from glitch.stats.stats import FileStats
 from glitch.tech import Tech
-from glitch.repr.inter import UnitBlockType, UnitBlock, Project, Module
+from glitch.repr.inter import UnitBlockType
 from glitch.parsers.parser import Parser
 from glitch.parsers.ansible import AnsibleParser
 from glitch.parsers.chef import ChefParser
@@ -29,57 +29,7 @@ from concurrent.futures import ThreadPoolExecutor, Future, as_completed
 # Otherwise, python will not consider these types of rules.
 from glitch.analysis.design.visitor import DesignVisitor  # type: ignore
 from glitch.analysis.security.visitor import SecurityVisitor  # type: ignore
-from glitch.dataflow.cfg import CFGBuilder
-from glitch.dataflow.utils import generate_dot, open_dot
-from glitch.dataflow.analysis import LiteralAnalysis, LiteralAnalysisResult, analyze_cfg_literals  # type: ignore
-
-
-def annotate_ir(inter, dataflow: bool, parser: Optional[Parser] = None) -> None:
-    """If dataflow is enabled, build CFG(s) for the given IR and run literal analysis.
-
-    Handles UnitBlock, Module and Project IR objects. Returns a list of
-    LiteralAnalysisResult objects (one per analyzed CFG) or None when
-    dataflow is False or `inter` is None.
-    """
-    if not dataflow or inter is None:
-        return None
-
-    # results: list[LiteralAnalysisResult] = []     
-
-    # UnitBlock: single CFG
-    if isinstance(inter, UnitBlock):
-        cfg_builder = CFGBuilder(inter, parser)
-        cfg = cfg_builder.build()
-        analyze_cfg_literals(cfg)
-        # if res is not None:
-            # results.append(res)
-        # return results
-        return
-
-    # Module: analyze each block
-    if isinstance(inter, Module):
-        for block in inter.blocks:
-            cfg_builder = CFGBuilder(block, parser)
-            cfg = cfg_builder.build()
-            analyze_cfg_literals(cfg)
-        #     if res is not None:
-        #         results.append(res)
-        # return results
-        return
-
-    # Project: iterate modules and their blocks
-    if isinstance(inter, Project):
-        for module in inter.modules:
-            for block in module.blocks:
-                cfg_builder = CFGBuilder(block, parser)
-                cfg = cfg_builder.build()
-                analyze_cfg_literals(cfg)
-                # if res is not None:
-                #     results.append(res)
-        return
-
-    # Unknown IR shape: do nothing
-    return None
+from glitch.dataflow.analysis import annotate_ir  # type: ignore
 
 
 def __parse_and_check(
@@ -421,19 +371,17 @@ def cfg(
             data = json.load(f)
             inter = IRBuilder.json_to_ir(data)
             annotate_ir(inter, dataflow, None)
-            if dump and inter is not None:
+            if dump:
                 print(json.dumps(inter.as_dict(), indent=2))
             return
     tech: Tech = __get_tech(tech)
     parser = __get_parser(tech)
     inter = parser.parse(path, type, module)
-    if isinstance(inter, UnitBlock):
+    if inter is not None:
         if dataflow:
             annotate_ir(inter, True, parser)
-        if dump and inter is not None:
+        if dump:
             print(json.dumps(inter.as_dict(), indent=2))
-        # dot = generate_dot(cfg)
-        # open_dot(dot)
 
 def main() -> None:
     cli(prog_name="glitch")

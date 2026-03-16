@@ -14,8 +14,8 @@ class TestAnsibleDependencyResolution(unittest.TestCase):
         parser = AnsibleParser()
         path = os.path.join(
             os.path.dirname(glitch.__file__),
+            "tests",
             "dataflow",
-            "dependencyResolution",
             "vmware",
             "deploy.yml",
         )
