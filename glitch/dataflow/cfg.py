@@ -168,45 +168,6 @@ class CFGBuilder:
     def _resolve_dependency(self, cfg: CFG, prev: Node, dep: Dependency) -> Node:
         #TODO
         return prev
-        if self.parser is None:
-            return prev
-        
-        current = prev
-        print(dep.names, "***************")
-        for dep_name in dep.names:
-            # Resolve the dependency file path
-            if not self.root.path:
-                continue
-
-                
-            base_dir = os.path.dirname(os.path.abspath(self.root.path))
-            dep_path = os.path.join(base_dir, dep_name)
-            
-            # Check if already visited or doesn't exist
-            abs_dep_path = os.path.abspath(dep_path)
-            if abs_dep_path in self.visited_files or not os.path.exists(dep_path):
-                continue
-            
-            # Mark as visited
-            self.visited_files.add(abs_dep_path)
-            
-            try:
-                # Parse the dependency file
-                dep_unit = self.parser.parse_file(dep_path, UnitBlockType.unknown)
-                print(dep_unit, "===================")
-                
-                if dep_unit is None:
-                    continue
-                # Traverse the entire dependency unit block to find all variables
-                # This respects lexical scoping and finds nested variables
-                current = self._visit(cfg, current, dep_unit)
-                    
-            except Exception as e:
-                # Log error but continue processing
-                print(f"Warning: Failed to process dependency {dep_path}: {e}")
-                continue
-        
-        return current
 
     def _visit_unitblock(self, cfg: CFG, prev: Node, block: UnitBlock) -> Node:
         current = prev

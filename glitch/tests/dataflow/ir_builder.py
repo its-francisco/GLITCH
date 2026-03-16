@@ -1,16 +1,15 @@
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict
 from glitch.repr.inter import (
     UnitBlock, UnitBlockType, Variable, AtomicUnit, Attribute,
     String, VariableReference, ElementInfo, Integer, Float, Boolean,
     Null, Complex, Array, Hash, FunctionCall, MethodCall,
-    BinaryOperation, UnaryOperation, Not, Minus,
+    Not, Minus,
     Or, And, Sum, Equal, NotEqual, LessThan, LessThanOrEqual,
     GreaterThan, GreaterThanOrEqual, In, Subtract, Multiply,
     Divide, Modulo, Power, RightShift, LeftShift, Access,
     BitwiseAnd, BitwiseOr, BitwiseXor, Assign,
-    ConditionalStatement, Comment, Dependency, Expr, Value,
-    Project, Module, File, Folder
+    ConditionalStatement, Comment, Dependency, Expr, Project, Module, File, Folder
 )
 
 

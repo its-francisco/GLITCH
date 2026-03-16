@@ -1,17 +1,15 @@
-from typing import Any, Dict
+from typing import Any
 import unittest
 from importlib.resources import files
 
-from glitch.repr.inter import UnitBlock, VariableReference
+from glitch.repr.inter import UnitBlock
 from glitch.dataflow.cfg import CFGBuilder
 from glitch.dataflow.analysis import analyze_cfg_literals
-from glitch.analysis.rules import RuleVisitor, Error
 from glitch.tech import Tech
 from glitch.tests.dataflow.ir_builder import IRBuilder
 from glitch.analysis.security.visitor import SecurityVisitor
 
 
-import json
 
 
 class TestIRJsonLintingDataflow(unittest.TestCase):

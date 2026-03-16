@@ -68,18 +68,14 @@ After this change, security checkers inspect `literal_annotation` on references 
 
 Dataflow annotation is executed in CLI flow ([glitch/__main__.py](glitch/__main__.py)) via `annotate_ir(...)` defined in [glitch/dataflow/analysis.py](glitch/dataflow/analysis.py), before running rule visitors. It is opt-in: the `--dataflow` flag (default `False`) must be set to enable it.
 
-## Tests added/extended ([glitch/tests/dataflow](glitch/tests/dataflow))
+## Tests added
 
 [glitch/tests/dataflow/test_dataflow.py](glitch/tests/dataflow/test_dataflow.py) validates:
 - indirect secret detection through variable aliases,
 - scope behavior (inner/outer scope interactions),
-- path-dependent outcomes (`Conflicting` / `Mixed`) reflected in findings,
-- annotation presence in serialized IR.
+- path-dependent outcomes (`Conflicting` / `Mixed`) reflected in findings
 
-[glitch/tests/dataflow/test_dependency_resolution.py](glitch/tests/dataflow/test_dependency_resolution.py) validates:
-- annotation propagation through dependency resolution,
-- parsing/visiting of included/imported files (`include_vars`, `include_tasks`, `import_tasks`, `import_playbook`),
-- correct traversal bookkeeping (`visited_files`).
+To simplify testing, a helper ([glitch/tests/dataflow/ir_builder.py](glitch/tests/dataflow/ir_builder.py)) was added to build IR objects from JSON serialization, keeping these tests isolated from parser behavior.
 
 ## Evaluation
 made use of the anotated datasets in glitch-llm repository. Only puppet in the - dataset showed difference with the following false positives:
@@ -96,8 +92,14 @@ Validation was aided by Ruben Opdebeeck's replication package for the paper ["Co
 
 ## Next steps
 
-Dependency-aware traversal in `CFGBuilder` is still WIP. Current logic resolves and visits several dependency patterns and prevents cycles with `visited_files`, but its coverage is limited to some ansible.
+Dependency-aware traversal in `CFGBuilder` is still work in progress. The current implementation resolves and visits several Ansible dependency patterns and prevents cycles with `visited_files`, but coverage is still limited.
+This ongoing work is currently maintained in branch `inter-file-analysis`.
 
-- expand dependency path extraction/normalization across more provider-specific shapes,
-- add configuration input for lexical scoping rules (so scope resolution policy is not hardcoded), including language-specific scoping constructs beyond stack-based lexical lookup.
-- extend tests for edge cases (relative paths, duplicate imports, recursive include graphs).
+Current validation exists in [glitch/tests/dataflow/test_dependency_resolution.py](glitch/tests/dataflow/test_dependency_resolution.py), including:
+- parsing and visiting of included files (`include_vars`, `include_tasks`, `import_tasks`, `import_playbook`),
+- traversal bookkeeping and cycle prevention (`visited_files`).
+
+Planned follow-up:
+- expand dependency path extraction and normalization across additional provider-specific patterns,
+- add configuration for lexical scoping rules so scope resolution is flexible,
+- formalize cross-file scope and value propagation semantics,

@@ -27,10 +27,10 @@ def generate_dot(cfg: CFG) -> str:
             lines.append(f"  {node.id} -> {succ.id};")
 
     if cfg.entry:
-        lines.append(f'  entry [label="ENTRY", shape=oval, style=filled, fillcolor=yellow];')
+        lines.append('  entry [label="ENTRY", shape=oval, style=filled, fillcolor=yellow];')
         lines.append(f"  entry -> {cfg.entry.id};")
     if cfg.exit:
-        lines.append(f'  exit [label="EXIT", shape=oval, style=filled, fillcolor=orange];')
+        lines.append('  exit [label="EXIT", shape=oval, style=filled, fillcolor=orange];')
         lines.append(f"{cfg.exit.id} -> exit;")
 
     lines.append("}")
